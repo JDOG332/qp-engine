@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="1.4.0";
+var VERSION="1.5.0";
 var THEMES={
 navy:{l:["#1f3a68","#e1e7f2","#f0f2f6","#ffffff","#d5dbe6"],d:["#8fb0ea","#1f2a40","#12151b","#1b1f27","#2f3644"]},
 blue:{l:["#2563c9","#e2ecfb","#f1f4f9","#ffffff","#d9e0ea"],d:["#6aa2ff","#1e2a3d","#14171c","#1d2128","#313845"]},
@@ -44,7 +44,7 @@ var CSS=".qp{box-sizing:border-box;height:780px;background:var(--bg);color:var(-
 ".qp .nav .nx{background:var(--accent)!important;border-color:var(--accent);color:var(--ai)!important}.qp .nav .nx.fin{background:var(--fin)!important;border-color:var(--fin);color:var(--fini)!important;font-weight:700;font-size:18px}.qp .nav .has{border-color:var(--accent);color:var(--accent)}"+
 ".qp .pop{position:absolute;inset:10px;background:var(--card);border:1.5px solid var(--accent);border-radius:14px;padding:12px;display:none;flex-direction:column;gap:12px;z-index:5}.qp .pop.on{display:flex}"+
 ".qp .pop textarea{flex:1;min-height:160px;width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:11px;padding:10px 12px;resize:none}"+
-".qp .pop .row{display:grid;grid-template-columns:1fr auto 1.6fr;gap:8px;height:52px;flex:none}.qp .pop .row .at{padding:0 14px;white-space:nowrap}.qp .pop .row .at.has{border-color:var(--accent);color:var(--accent)}.qp .mini{display:none;flex-direction:column;gap:8px;flex:none}.qp .mini.on{display:flex}.qp .mini .paste{height:56px;font-size:15px}.qp .mini .thumbs{height:64px}.qp .mini .th{width:56px;height:56px}.qp .mini .th button{width:22px;height:22px;top:2px;right:2px}.qp .pop .row button{font:inherit;font-weight:600;border-radius:11px;border:1.5px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}.qp .pop .row .sv{background:var(--accent)!important;border-color:var(--accent);color:var(--ai)!important}"+
+".qp .pop .row{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:8px;height:52px;flex:none}.qp .pop .row .at{padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qp .pop .row .at.has{border-color:var(--accent);color:var(--accent)}.qp .mini{display:none;flex-direction:column;gap:8px;flex:none}.qp .mini.on{display:flex}.qp .mini .paste{height:56px;font-size:15px}.qp .mini .thumbs{height:64px}.qp .mini .th{width:56px;height:56px}.qp .mini .th button{width:22px;height:22px;top:2px;right:2px}.qp .pop .row button{font:inherit;font-weight:600;border-radius:11px;border:1.5px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}.qp .pop .row .sv{background:var(--accent)!important;border-color:var(--accent);color:var(--ai)!important}"+
 ".qp .stash{position:absolute;left:0;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}";
 var DN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],SEP="; ",MAXSHOTS=10;
 function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
@@ -159,7 +159,7 @@ function mount(R){
  next.onclick=function(){if(summary){send();return}var q=Q[i];if(q.kind==="info")setA(q,{choice:"Got it"});
   if(q.kind==="drag"&&!(A[q.id]||{}).choice)setA(q,{choice:"kept: "+(ORD[q.id]||q.items).join(" > ")});
   if(editing||i===Q.length-1){summary=true;editing=false}else i++;render()};
- function paBadge(){pa.textContent=shots.length?"📎 "+shots.length:"📎";pa.className="at"+(shots.length?" has":"")}
+ function paBadge(){var lb=innerWidth<520?"Attach":"Attach screenshot";pa.textContent="📎 "+lb+(shots.length?" · "+shots.length:"");pa.className="at"+(shots.length?" has":"")}
  nb.onclick=function(){if(summary){nb.textContent=syncCopy(transcript())?"Copied ✓":"Couldn't copy";return}ta.value=(A[Q[i].id]||{}).note||"";mini.className="mini";mini.innerHTML="";paBadge();pop.classList.add("on");setTimeout(function(){ta.focus()},30)};
  pa.onclick=function(){if(mini.classList.contains("on")){mini.className="mini";mini.innerHTML="";return}mini.innerHTML="";mini.className="mini on";shotUI(mini,true)};
  pc.onclick=function(){pop.classList.remove("on")};ps.onclick=function(){setA(Q[i],{note:ta.value});pop.classList.remove("on");noteBtn();dots()};
