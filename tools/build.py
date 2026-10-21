@@ -13,12 +13,10 @@ def build(r, cdn=None):
     errs = check(r)
     if errs:
         raise SystemExit("check failed:\n" + "\n".join(errs))
-    has_shot = any(q.get("kind") == "shot" for q in r["screens"])
     data = json.dumps(r, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     summary = f'<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Question page round {r["round"]}.</h2>'
     parts = [summary, FONTS, '<div id="qp-root"></div>']
-    if has_shot:
-        parts.append(FORM)
+    parts.append(FORM)
     if cdn:
         parts.append(f'<script src="{cdn}"></script>')
     else:
