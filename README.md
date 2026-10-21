@@ -6,4 +6,4 @@ This repo holds code only: no rounds, no answers, no notes, no names. Each round
 
 Rounds load a fixed version through jsDelivr, for example:
 
-https://cdn.jsdelivr.net/gh/JDOG332/qp-engine@v1.2.0/engine.js
+https://cdn.jsdelivr.net/gh/JDOG332/qp-engine@<full commit sha>/engine.js (pinned by commit; tags are not used)
