@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="1.2.0";
+var VERSION="1.3.0";
 var THEMES={
 navy:{l:["#1f3a68","#e1e7f2","#f0f2f6","#ffffff","#d5dbe6"],d:["#8fb0ea","#1f2a40","#12151b","#1b1f27","#2f3644"]},
 blue:{l:["#2563c9","#e2ecfb","#f1f4f9","#ffffff","#d9e0ea"],d:["#6aa2ff","#1e2a3d","#14171c","#1d2128","#313845"]},
@@ -54,7 +54,7 @@ function mount(R){
  if(!document.getElementById("qp-css")){var st=el("style");st.id="qp-css";st.textContent=CSS;document.head.appendChild(st)}
  var host=document.getElementById(R.root||"qp-root");
  var qp=el("div","qp"),dotsEl=el("div","dots"),card=el("div","card"),hd=el("div","hd"),tag=el("span","tag"),ttl=el("h1"),ct=el("div","ct"),nav=el("div","nav");
- var back=el("button",null,"Back"),nb=el("button",null,"📝 Add a note"),next=el("button","nx","Next");[back,nb,next].forEach(function(b){b.type="button";nav.appendChild(b)});
+ var back=el("button",null,"Back"),nb=el("button",null,innerWidth<520?"📝 Note":"📝 Add a note"),next=el("button","nx","Next");[back,nb,next].forEach(function(b){b.type="button";nav.appendChild(b)});
  hd.append(tag,ttl);card.append(hd,ct,nav);
  var pop=el("div","pop"),phd=el("div","hd"),ta=el("textarea"),prow=el("div","row"),pc=el("button",null,"Cancel"),ps=el("button","sv","Save note");pc.type=ps.type="button";
  phd.appendChild(el("span","tag","📝 Note"));ta.setAttribute("aria-label","Note");ta.placeholder="Type or dictate your note";prow.append(pc,ps);pop.append(phd,ta,prow);
@@ -65,7 +65,7 @@ function mount(R){
  function theme(){var t=THEMES[R.theme]||THEMES.navy,d=dark(),v=d?t.d:t.l,ks=["accent","chosen","bg","card","line"];ks.forEach(function(k,j){qp.style.setProperty("--"+k,v[j])});
   var x=d?{ink:"#eceae6",muted:"#a2a5aa",ai:"#16181b",fin:"#ffffff",fini:"#0b0b0b",soft:"#20252f"}:{ink:"#1f2328",muted:"#6a6e73",ai:"#ffffff",fin:"#0b0b0b",fini:"#ffffff",soft:"#f5f7fa"};Object.keys(x).forEach(function(k){qp.style.setProperty("--"+k,x[k])})}
  var H=780;try{if(innerWidth<520){var sh=(screen&&screen.availHeight)||800;H=Math.round(Math.max(520,Math.min(660,(sh-230)*0.85)))}}catch(e){}qp.style.height=H+"px";
- function exRow(s,m,cls){var d=el("div","ex"+(cls?" "+cls:""));d.append(el("div","s",s),el("div","m",m||""));d.onclick=function(){d.classList.toggle("open");ct.classList.toggle("scroll",!!ct.querySelector(".ex.open"))};return d}
+ function exRow(s,m,cls){var d=el("div","ex"+(cls?" "+cls:""));d.append(el("div","s",s),el("div","m",m||""));d.onclick=function(){var was=d.classList.contains("open");ct.querySelectorAll(".ex.open").forEach(function(o){o.classList.remove("open")});if(!was)d.classList.add("open");ct.classList.toggle("scroll",!was);if(!was)try{d.scrollIntoView({block:"nearest"})}catch(e){}};return d}
  function go(u){try{if(typeof openLink==="function"){openLink(u);return}}catch(e){}try{window.open(u,"_blank","noopener")}catch(e){}}
  function cpRow(c){var url=/^https?:\/\/\S+$/.test((c.text||"").trim()),lb=url?"Copy & open":"Copy",w=el("div","cp"),pre=el("pre",null,c.text),b=el("button",null,lb);b.type="button";b.onclick=function(){var ok=syncCopy(c.text);if(url)go(c.text.trim());b.textContent=ok?(url?"Opened ✓":"Copied ✓"):"⌘C";setTimeout(function(){b.textContent=lb},1800)};w.append(pre,b);return w}
  function mkRow(x){if(x.c!=null)return cpRow(typeof x.c==="string"?{text:x.c}:x.c);if(x.s!=null)return exRow(x.s,x.m);return el("p",null,x.p)}
@@ -82,7 +82,7 @@ function mount(R){
   else if(q.kind==="info"&&!note)return;
   L.push((k+1)+". "+q.text);L.push("Answer: "+(ans||"(no pick)"));if(note)L.push("Note: "+note);L.push("")});if(extra)L.push(extra);return L.join("\n").trim()}
  function dots(){dotsEl.innerHTML="";Q.forEach(function(q,k){var x=el("i");if(!summary&&k===i)x.className="cur";else if(isAns(q))x.className="done";dotsEl.appendChild(x)});var z=el("i");if(summary)z.className="cur";dotsEl.appendChild(z)}
- function noteBtn(){var q=Q[i],has=q&&((A[q.id]||{}).note||"").trim();nb.textContent=has?"📝 Note ✓":"📝 Add a note";nb.className=has?"has":""}
+ function noteBtn(){var q=Q[i],has=q&&((A[q.id]||{}).note||"").trim();nb.textContent=has?"📝 Note ✓":(innerWidth<520?"📝 Note":"📝 Add a note");nb.className=has?"has":""}
  function choose(q,label){var pd=(A[q.id]||{}).choice===label?"":label;setA(q,{choice:pd});var fin=pd&&(editing||i===Q.length-1);render();if(pd){clearTimeout(advT);advT=setTimeout(function(){if(!summary&&Q[i]===q){if(fin){summary=true;editing=false}else i++;render()}},150)}}
  function toggleMulti(q,label){var cur=picksOf(A[q.id]),nx=cur.indexOf(label)>=0?cur.filter(function(x){return x!==label}):q.options.map(function(x){return x.label}).filter(function(l){return l===label||cur.indexOf(l)>=0});setA(q,{choice:nx.join(SEP)});render()}
  function skipRow(q,a){var s=el("button","r skip");s.type="button";s.setAttribute("aria-pressed",a.choice==="Skip"?"true":"false");s.appendChild(el("b",null,"Skip"));s.onclick=function(){choose(q,"Skip")};return s}
