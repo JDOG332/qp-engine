@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="1.5.0";
+var VERSION="1.6.0";
 var THEMES={
 navy:{l:["#1f3a68","#e1e7f2","#f0f2f6","#ffffff","#d5dbe6"],d:["#8fb0ea","#1f2a40","#12151b","#1b1f27","#2f3644"]},
 blue:{l:["#2563c9","#e2ecfb","#f1f4f9","#ffffff","#d9e0ea"],d:["#6aa2ff","#1e2a3d","#14171c","#1d2128","#313845"]},
@@ -140,11 +140,13 @@ function mount(R){
    (q.rows||[]).forEach(function(x){ct.appendChild(mkRow(x))});
    ({decide:decide,do:decide,rank:rank,drag:drag,scale:scale,yn:yn,date:datePick,shot:shot}[q.kind]||decide)(q,a)}
   noteBtn();next.className="nx";next.textContent=info?"Got it · Next":"Next"}
+ function fillable(){return Q.filter(function(q){if(isAns(q))return false;if(q.kind==="yn")return q.pick==="Yes"||q.pick==="No";if((q.kind==="decide"||!q.kind)&&!q.multi&&!q.code)return(q.options||[]).some(function(o){return o.pick});return false})}
+ function goPicks(){fillable().forEach(function(q){var v=q.kind==="yn"?q.pick:(q.options.filter(function(o){return o.pick})[0]||{}).label;if(v)setA(q,{choice:v+" (Claude's pick, accepted)"})});send()}
  function renderSummary(){tag.textContent="📤 Send";ttl.textContent=sent?"Sent ✓":"Send your answers";ct.className="ct scroll";ct.innerHTML="";
-  ct.appendChild(el("p","lead",shots.length?"📎 "+shots.length+" screenshot"+(shots.length>1?"s":"")+" go with your answers. Tap a row to change it.":"Tap a row to change it."));
+  var fbn=fillable().length;ct.appendChild(el("p","lead",(shots.length?"📎 "+shots.length+" screenshot"+(shots.length>1?"s":"")+" go with your answers. ":"")+(fbn&&!sent?fbn+" unanswered: Go with my picks fills them with Claude's pick and sends.":"Tap a row to change it.")));
   Q.forEach(function(q,k){var a=A[q.id]||{},note=(a.note||"").trim();if(q.kind==="info"&&!note)return;var ans=q.kind==="shot"?(shots.length?"📎 "+shots.length+" added":"none added"):(a.choice||"No answer");
    var b=el("button","r");b.type="button";b.append(el("b",null,q.text),el("span","dt",ans+(note?" · "+note:"")));b.onclick=function(){summary=false;editing=true;i=k;render()};ct.appendChild(b)});
-  nb.className="";nb.textContent=sent?"Copy ✓":"Copy instead";next.className="nx fin";next.textContent=sent?"Send again ↗":"Send to Claude ↗"}
+  var fb=fillable().length;nb.className=fb&&!sent?"has":"";nb.textContent=sent?"Copy ✓":(fb?"✓ Go with my picks ↗":"Copy instead");next.className="nx fin";next.textContent=sent?"Send again ↗":"Send to Claude ↗"}
  function plain(t){try{sendPrompt(t)}catch(e){syncCopy(t)}}
  function send(){sent=true;render();if(log.length)log=log.slice(-12);
   if(!shots.length){plain(transcript());return}
@@ -160,7 +162,7 @@ function mount(R){
   if(q.kind==="drag"&&!(A[q.id]||{}).choice)setA(q,{choice:"kept: "+(ORD[q.id]||q.items).join(" > ")});
   if(editing||i===Q.length-1){summary=true;editing=false}else i++;render()};
  function paBadge(){var lb=innerWidth<520?"Attach":"Attach screenshot";pa.textContent="📎 "+lb+(shots.length?" · "+shots.length:"");pa.className="at"+(shots.length?" has":"")}
- nb.onclick=function(){if(summary){nb.textContent=syncCopy(transcript())?"Copied ✓":"Couldn't copy";return}ta.value=(A[Q[i].id]||{}).note||"";mini.className="mini";mini.innerHTML="";paBadge();pop.classList.add("on");setTimeout(function(){ta.focus()},30)};
+ nb.onclick=function(){if(summary){if(fillable().length&&!sent){goPicks();return}nb.textContent=syncCopy(transcript())?"Copied ✓":"Couldn't copy";return}ta.value=(A[Q[i].id]||{}).note||"";mini.className="mini";mini.innerHTML="";paBadge();pop.classList.add("on");setTimeout(function(){ta.focus()},30)};
  pa.onclick=function(){if(mini.classList.contains("on")){mini.className="mini";mini.innerHTML="";return}mini.innerHTML="";mini.className="mini on";shotUI(mini,true)};
  pc.onclick=function(){pop.classList.remove("on")};ps.onclick=function(){setA(Q[i],{note:ta.value});pop.classList.remove("on");noteBtn();dots()};
  document.addEventListener("keydown",function(e){var t=e.target;if(t&&(t.tagName==="TEXTAREA"||t.tagName==="INPUT"||t.isContentEditable))return;if(e.metaKey||e.ctrlKey||e.altKey)return;
