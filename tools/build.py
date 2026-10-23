@@ -20,7 +20,10 @@ def build(r, cdn=None):
     if cdn:
         parts.append(f'<script src="{cdn}"></script>')
     else:
-        parts.append("<script>" + open(os.path.join(HERE, "engine.js")).read() + "</script>")
+        eng = os.path.join(HERE, "engine.js")
+        if not os.path.exists(eng):
+            eng = os.path.join(os.path.dirname(HERE), "engine.js")
+        parts.append("<script>" + open(eng).read() + "</script>")
     parts.append(f'<script>if(window.QP)QP.mount({data});else document.getElementById("qp-root").textContent="The page engine did not load. Say engine down and Claude resends this round the backup way."</script>')
     return "\n".join(parts)
 
