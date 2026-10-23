@@ -5,7 +5,7 @@ import json, re, sys
 KINDS = {"report", "todo", "decide", "do", "pair", "rank", "drag", "scale", "date", "shot", "info"}
 THEMES = {"navy", "blue", "ngu", "plum", "scarlet", "teal", "gold", "forest"}
 MAX_ROWS = 8
-EMO = re.compile(r"^[^\w\s]")
+EMO = re.compile(r"^(?:[1-9]\uFE0F?\u20E3|[^\w\s])")
 
 
 def rows_ok(rows, w, bad):
