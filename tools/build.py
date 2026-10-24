@@ -14,8 +14,8 @@ Shortcuts in the round data (all optional):
     (the same verdict goes on the chat line after "is ready"; build.py prints it)
   {"kind":"code","q","action","code","more"?,"rows"?} -> a 🔐 screen (Not yet, Approve NNNN)
   "after": "what Claude does after Send" -> faint line by Send
-  "shots": true                         -> adds the hidden screenshot send form and the 📎 buttons;
-    off by default, because that form stops the iPhone app from opening the card full screen
+  "shots": false                        -> leaves out the hidden screenshot send form (on by default:
+    on the Mac a screenshot pasted with Cmd-V into any note reaches Claude; Jeff, iqp M1 test)
 Answered screens: every file in qp/answers/ holds one of Jeff's Sends; a question whose
 title appears there is dropped (never re-ask)."""
 import glob, json, os, re, sys, urllib.request
@@ -116,7 +116,7 @@ def html(r, engine_tag):
             .replace("</", "<\\/").replace(chr(0x2028), "\\u2028").replace(chr(0x2029), "\\u2029"))
     summary = '<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Question page round %s.</h2>' % r["round"]
     tail = '<script>if(window.QP)QP.mount(%s);else document.getElementById("qp-root").textContent="The page engine did not load. Say engine down."</script>' % data
-    parts = [summary, FONTS, '<div id="qp-root"></div>'] + ([FORM] if r.get("shots") else []) + [engine_tag, tail]
+    parts = [summary, FONTS, '<div id="qp-root"></div>'] + ([FORM] if r.get("shots", True) else []) + [engine_tag, tail]
     return "\n".join(parts)
 
 
