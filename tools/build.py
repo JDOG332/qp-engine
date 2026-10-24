@@ -9,7 +9,9 @@ Shortcuts in the round data (all optional):
     rows starting with a number keycap=todo, other rows=report); ids s1, s2, ...
   "mem": [{"file","line","was"?}]       -> 🧠 rows on the report
   "title": "<new chat title>"           -> ✅ row with the title in a copy box
-  "finish": {"kind":"close"|"delete","pickup":"..."} -> the closing report row
+  "finish": {"kind":"delete"|"keep","pickup":"...","title"?,"why"?} -> the end-of-chat verdict in its
+    own box at the bottom: 🗑️ Safe to close & delete, or 💾 Safe to close, keep this chat
+    (the same verdict goes on the chat line after "is ready"; build.py prints it)
   {"kind":"code","q","action","code","more"?,"rows"?} -> a 🔐 screen (Not yet, Approve NNNN)
   "after": "what Claude does after Send" -> faint line by Send
 Answered screens: every file in qp/answers/ holds one of Jeff's Sends; a question whose
@@ -68,7 +70,7 @@ def expand(r, adir):
         if q["kind"] == "report" and report is None:
             report = q
         out.append(q)
-    if report is None and (r.get("mem") or r.get("title") or r.get("finish")):
+    if report is None and (r.get("mem") or r.get("title")):
         report = {"kind": "report", "rows": []}
         out.insert(0, report)
     if report is not None:
@@ -80,13 +82,19 @@ def expand(r, adir):
             rows.append({"s": "\U0001F9E0 %s %s" % ("Updated" if m.get("was") else "Added to", m["file"]), "m": inner})
         if r.get("title"):
             rows.append({"s": "✅ New chat title", "m": [{"p": "Rename this chat to:"}, {"c": r["title"]}]})
-        fin = r.get("finish")
-        if fin:
-            if fin.get("kind") == "delete":
-                rows.append({"s": "\U0001F5D1️ Safe to delete, pickup point: " + fin["pickup"], "m": [{"c": fin.get("title", "")}] if fin.get("title") else fin["pickup"]})
-            else:
-                rows.append({"s": "✅ Safe to close", "m": fin.get("pickup") or "Nothing is left for you or Claude here."})
         report["rows"] = rows
+    fin = r.get("finish")
+    verdict = None
+    if fin:
+        if fin.get("kind") == "delete":
+            verdict = "\U0001F5D1\uFE0F Safe to close & delete"
+            inner = [{"p": "Pickup point: " + (fin.get("pickup") or "nothing to pick up")}]
+            if fin.get("title"):
+                inner.append({"c": fin["title"]})
+        else:
+            verdict = "\U0001F4BE Safe to close, keep this chat"
+            inner = [{"p": fin.get("why") or fin.get("pickup") or "Worth keeping to look back at."}]
+        out.append({"kind": "report", "rows": [{"s": verdict, "m": inner}]})
     for i, q in enumerate(out, 1):
         q.setdefault("id", "s%d" % i)
         if not q.get("id"):
@@ -97,6 +105,7 @@ def expand(r, adir):
     for k in ("mem", "title", "finish", "theme"):
         r.pop(k, None)
     r["screens"] = out
+    r["_verdict"] = verdict
     return r, dropped
 
 
@@ -126,6 +135,7 @@ def main(argv):
     with open(path, encoding="utf-8") as f:
         raw = json.load(f)
     r, dropped = expand(raw, adir)
+    verdict = r.pop("_verdict", None)
     errs = check(r)
     if errs:
         print("check failed:\n" + "\n".join(errs))
@@ -147,6 +157,8 @@ def main(argv):
     print("OK %s: %d screens, %d bytes" % (r["round"], len(r["screens"]), len(card)))
     print("card: " + base + ".html")
     print("fallback: " + fbmsg)
+    if verdict:
+        print("chat line ends: · " + verdict)
     return 0
 
 
