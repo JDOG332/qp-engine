@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="1.8.3";
+var VERSION="1.8.4";
 var PAL={
 light:{accent:"#24426f",chosen:"#e2e8f2",bg:"#eef1f5",card:"#fbfcfd",soft:"#f3f5f8",line:"#d3d9e2",ink:"#232831",muted:"#6b717a",on:"#ffffff",fin:"#1d2330",fini:"#ffffff",lock:"#9a6b12",lockbg:"#faf3e4"},
 dark:{accent:"#a3bdea",chosen:"#33445f",bg:"#232934",card:"#2c3341",soft:"#313946",line:"#434c5c",ink:"#e8e6e1",muted:"#a7adb6",on:"#232934",fin:"#e8e6e1",fini:"#232934",lock:"#e0b660",lockbg:"#3a3428"}};
@@ -49,13 +49,14 @@ var CSS=
 ".qp .rk[aria-pressed=true] .badge{background:var(--accent);border-color:var(--accent);color:var(--on)}"+
 ".qp .rk{display:flex;align-items:center;gap:8px;text-align:left}"+
 ".qp .cp{display:flex;gap:8px;align-items:center}"+
-".qp .cp pre{flex:1;min-width:0;margin:0;padding:8px;max-height:150px;overflow:auto;background:var(--bg);border:1.5px solid var(--line);border-radius:10px;font:15px/1.45 ui-monospace,Menlo,monospace;white-space:pre-wrap;color:var(--ink);user-select:all}"+
+".qp .cp pre{flex:1;min-width:0;margin:0;padding:8px;overflow-wrap:anywhere;background:var(--bg);border:1.5px solid var(--line);border-radius:10px;font:15px/1.45 ui-monospace,Menlo,monospace;white-space:pre-wrap;color:var(--ink);user-select:all}"+
 ".qp .cp button,.qp .send{font:inherit;font-weight:700;border:0;cursor:pointer;background:var(--accent);color:var(--on);border-radius:10px}"+
 ".qp .cp button{flex:none;height:48px;padding:0 16px}"+
 ".qp textarea{width:100%;min-height:96px;font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:8px;resize:none;line-height:1.35}"+
 ".qp textarea:focus{border-color:var(--accent);outline:none}.qp textarea::placeholder{color:var(--muted);opacity:.55}"+
 ".qp .nrow{display:flex;align-items:center;gap:8px}.qp .nrow .at{font:inherit;height:40px;padding:0 16px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}"+
 ".qp .nrow .at.has{border-color:var(--accent);color:var(--accent)}.qp .nrow .ns{color:var(--muted);flex:1;min-width:0}"+
+".qp .thumbs{display:flex;flex-wrap:wrap;gap:8px}.qp .thumbs:empty{display:none}.qp .th{position:relative}.qp .th img{display:block;height:80px;max-width:160px;object-fit:cover;border-radius:8px;border:1.5px solid var(--line)}.qp .th button{position:absolute;top:-8px;right:-8px;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:14px;line-height:1;cursor:pointer}"+
 ".qp .after{margin:0;color:var(--muted);opacity:.8;text-align:center}"+
 ".qp .send{flex:none;min-height:52px;background:var(--fin);color:var(--fini)}"+
 ".qp .bar{display:none;min-height:48px;align-items:center;justify-content:center;gap:8px;font-weight:700;cursor:pointer}"+
@@ -101,12 +102,14 @@ function mount(R){
  var canShot=!!document.querySelector("form.elicit");
  function noteBox(id,ph){var w=el("div","in"),t=el("textarea"),nr=el("div","nrow"),ns=el("span","ns"),at=el("button","at","📎");at.type="button";t.placeholder=ph||"Add a note";
   t.oninput=function(){NT[id]=t.value;mark()};t.onclick=function(e){e.stopPropagation()};
-  function mark(){var n=(SH[id]||[]).length;ns.textContent=n?n+" screenshot"+(n>1?"s":""):"";at.className="at"+(n?" has":"");var h=w.closest&&w.closest(".qh");if(h)h.classList.toggle("has",!!((NT[id]||"").trim()||n))}
+  var tb=el("div","thumbs");
+  function thumbs(){tb.innerHTML="";(SH[id]||[]).forEach(function(f,k){var d=el("div","th"),im=el("img"),x=el("button",null,"×");x.type="button";x.setAttribute("aria-label","Remove");try{im.src=URL.createObjectURL(f)}catch(e){}x.onclick=function(e){e.stopPropagation();SH[id].splice(k,1);mark()};d.append(im,x);tb.appendChild(d)})}
+  function mark(){thumbs();var n=(SH[id]||[]).length;ns.textContent=n?n+" screenshot"+(n>1?"s":""):"";at.className="at"+(n?" has":"");var h=w.closest&&w.closest(".qh");if(h)h.classList.toggle("has",!!((NT[id]||"").trim()||n))}
   at.onclick=function(e){e.stopPropagation();shotTarget={id:id,done:mark};pick.click()};
   t.addEventListener("paste",function(e){if(!canShot)return;var f=files(e.clipboardData);if(f.length){e.preventDefault();addShots(id,f);mark()}});
   // Mac: paste (⌘V) or 📎; iPhone: the card can't send pictures, so no 📎 there (Jeff pastes into the chat box)
   var touch=false;try{touch=matchMedia("(pointer:coarse)").matches}catch(e){}
-  if(canShot){if(!touch)nr.append(at);nr.append(ns);w.append(t,nr)}else w.append(t);w._mark=mark;return w}
+  if(canShot){if(!touch)nr.append(at);nr.append(ns);w.append(t,tb,nr)}else w.append(t);w._mark=mark;return w}
  function files(dt){try{return dt.files&&dt.files.length?[].slice.call(dt.files):[].slice.call(dt.items||[]).filter(function(x){return x.kind==="file"}).map(function(x){return x.getAsFile()}).filter(Boolean)}catch(e){return[]}}
  function addShots(id,list){var imgs=[].slice.call(list||[]).filter(function(f){return f&&f.type&&f.type.indexOf("image/")===0});var all=Object.keys(SH).reduce(function(n,k){return n+SH[k].length},0);imgs=imgs.slice(0,Math.max(0,MAXSHOTS-all));SH[id]=(SH[id]||[]).concat(imgs.map(function(f,k){return f.name&&f.name!=="image.png"?f:new File([f],"screenshot-"+Date.now()+"-"+k+".png",{type:f.type})}))}
  pick.onchange=function(){if(shotTarget){addShots(shotTarget.id,pick.files);shotTarget.done()}pick.value=""};
@@ -135,9 +138,11 @@ function mount(R){
  function report(q,P){var rows=q.rows||[],ord=["❌","✅","🧠","⚠"],groups={},rest=[];
   rows.forEach(function(r){var e=first(r.s).replace(/️/g,"");if(e==="✅"||e==="🧠"){(groups[e]=groups[e]||[]).push(r)}else rest.push(r)});
   function key(r){var e=first(r.s).replace(/️/g,""),i=ord.indexOf(e);return i<0?4:i}
-  var out=[];rest.filter(function(r){return key(r)===0}).forEach(function(r){out.push(exRow(r.s,r.m))});
+  // v1.8.4: ❌ and ⚠️ rows open by default (Jeff, engine chat); ✅ and 🧠 stay folded
+  function openRow(r){var d=exRow(r.s,r.m);var k=key(r);if(k===0||k===3)d.classList.add("open");return d}
+  var out=[];rest.filter(function(r){return key(r)===0}).forEach(function(r){out.push(openRow(r))});
   ["✅","🧠"].forEach(function(e){var g=groups[e];if(!g)return;if(g.length===1){out.push(exRow(g[0].s,g[0].m));return}var b=el("div","in");g.forEach(function(r){b.appendChild(exRow(r.s,r.m))});var lab=e==="✅"?g.length+" done":g.length+" memory writes";out.push(drop(lbl(e+" "+lab,"span","t"),b))});
-  rest.filter(function(r){return key(r)!==0}).sort(function(a,b){return key(a)-key(b)}).forEach(function(r){out.push(exRow(r.s,r.m))});
+  rest.filter(function(r){return key(r)!==0}).sort(function(a,b){return key(a)-key(b)}).forEach(function(r){out.push(openRow(r))});
   out.forEach(function(o){P.appendChild(o)})}
  var KIND={decide:decide,do:decide,pair:pair,scale:scale,date:datePick,rank:rank,drag:drag};
  (R.screens||[]).forEach(function(q){if(q.kind==="report"){report(q,sec());return}if(q.kind==="todo"){todo(q,sec());return}var lock=!!q.code,P=sec(lock?"lock":"");qhead(q,P,lock);(q.rows||[]).forEach(function(r){P.appendChild(exRow(r.s,r.m))});(KIND[q.kind]||decide)(q,P)});
