@@ -98,12 +98,14 @@ function mount(R){
  function cpRow(c){var text=typeof c==="string"?c:c.text,url=/^https?:\/\/\S+$/.test((text||"").trim()),lb=url?"Copy & open":"Copy",w=el("div","cp"),pre=el("pre",null,text),b=el("button",null,lb);b.type="button";
   b.onclick=function(e){e.stopPropagation();var ok=syncCopy(text);if(url)go(text.trim());b.textContent=ok?(url?"Opened ✓":"Copied ✓"):"⌘C";setTimeout(function(){b.textContent=lb},1800)};w.append(pre,b);return w}
  function sec(cls){var p=el("div","sec"+(cls?" "+cls:""));ct.appendChild(p);return p}
+ // screenshots need the hidden send form, and that form stops the iPhone app from opening the card full screen; build.py adds it only when a round asks for screenshots
+ var canShot=!!document.querySelector("form.elicit");
  function noteBox(id,ph){var w=el("div","in"),t=el("textarea"),nr=el("div","nrow"),ns=el("span","ns"),at=el("button","at","📎");at.type="button";t.placeholder=ph||"Add a note";
   t.oninput=function(){NT[id]=t.value;mark()};t.onclick=function(e){e.stopPropagation()};
   function mark(){var n=(SH[id]||[]).length;ns.textContent=n?n+" screenshot"+(n>1?"s":""):"";at.className="at"+(n?" has":"");var h=w.closest&&w.closest(".qh");if(h)h.classList.toggle("has",!!((NT[id]||"").trim()||n))}
   at.onclick=function(e){e.stopPropagation();shotTarget={id:id,done:mark};pick.click()};
-  t.addEventListener("paste",function(e){var f=files(e.clipboardData);if(f.length){e.preventDefault();addShots(id,f);mark()}});
-  nr.append(at,ns);w.append(t,nr);w._mark=mark;return w}
+  t.addEventListener("paste",function(e){if(!canShot)return;var f=files(e.clipboardData);if(f.length){e.preventDefault();addShots(id,f);mark()}});
+  if(canShot){nr.append(at,ns);w.append(t,nr)}else w.append(t);w._mark=mark;return w}
  function files(dt){try{return dt.files&&dt.files.length?[].slice.call(dt.files):[].slice.call(dt.items||[]).filter(function(x){return x.kind==="file"}).map(function(x){return x.getAsFile()}).filter(Boolean)}catch(e){return[]}}
  function addShots(id,list){var imgs=[].slice.call(list||[]).filter(function(f){return f&&f.type&&f.type.indexOf("image/")===0});var all=Object.keys(SH).reduce(function(n,k){return n+SH[k].length},0);imgs=imgs.slice(0,Math.max(0,MAXSHOTS-all));SH[id]=(SH[id]||[]).concat(imgs.map(function(f,k){return f.name&&f.name!=="image.png"?f:new File([f],"screenshot-"+Date.now()+"-"+k+".png",{type:f.type})}))}
  pick.onchange=function(){if(shotTarget){addShots(shotTarget.id,pick.files);shotTarget.done()}pick.value=""};
@@ -159,9 +161,9 @@ function mount(R){
   try{var dt=new DataTransfer();T.shots.forEach(function(f){dt.items.add(f)});fin.files=dt.files;fin.dispatchEvent(new Event("change",{bubbles:true}))}catch(e){plain(transcript("(screenshots not sent: "+(e&&e.message||e)+")").text);return}
   setTimeout(function(){var f2=document.querySelector("form.elicit")||form,ans=f2.querySelector("[data-name=answers]"),sub=f2.querySelector(".elicit-submit");if(!sub){plain(transcript("(screenshots not sent: no submit)").text);return}
    if(!ans){ans=el("textarea","elicit-textarea");ans.setAttribute("data-name","answers");ans.style.display="none";(f2.querySelector(".elicit-group")||f2).appendChild(ans)}ans.value=T.text;ans.dispatchEvent(new Event("input",{bubbles:true}));sub.click()},400)};
- ["dragenter","dragover"].forEach(function(ev){qp.addEventListener(ev,function(e){e.preventDefault();qp.classList.add("drop")})});
+ if(canShot)["dragenter","dragover"].forEach(function(ev){qp.addEventListener(ev,function(e){e.preventDefault();qp.classList.add("drop")})});
  qp.addEventListener("dragleave",function(e){if(!qp.contains(e.relatedTarget))qp.classList.remove("drop")});
- qp.addEventListener("drop",function(e){e.preventDefault();qp.classList.remove("drop");var fs=e.dataTransfer&&e.dataTransfer.files;if(!fs||!fs.length)return;var h=e.target.closest&&e.target.closest(".qh"),id="_page";if(h){var s=h.closest(".sec");(R.screens||[]).forEach(function(q){if(q._sec===s)id=q.id})}addShots(id,fs);var w=h?h.querySelector(".in"):pn;if(w&&w._mark)w._mark()});
+ qp.addEventListener("drop",function(e){if(!canShot)return;e.preventDefault();qp.classList.remove("drop");var fs=e.dataTransfer&&e.dataTransfer.files;if(!fs||!fs.length)return;var h=e.target.closest&&e.target.closest(".qh"),id="_page";if(h){var s=h.closest(".sec");(R.screens||[]).forEach(function(q){if(q._sec===s)id=q.id})}addShots(id,fs);var w=h?h.querySelector(".in"):pn;if(w&&w._mark)w._mark()});
  [].forEach.call(ct.querySelectorAll(".sec"),function(s,i){var q=(R.screens||[])[i];if(q)q._sec=s});
  ct.addEventListener("touchstart",function(e){if(!e.touches||e.touches.length!==1)return;if(qp.classList.contains("free"))return;var max=ct.scrollHeight-ct.clientHeight;if(max<=0)return;if(ct.scrollTop<=0)ct.scrollTop=1;else if(ct.scrollTop>=max)ct.scrollTop=max-1},{passive:true});
  ct.addEventListener("touchmove",function(e){if(!qp.classList.contains("free")&&ct.scrollHeight-ct.clientHeight>0)e.stopPropagation()},{passive:true});
