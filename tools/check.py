@@ -1,80 +1,78 @@
 #!/usr/bin/env python3
-"""Check a Shape 2 round's data before it is shown. Usage: check.py round.json  (exit 1 on any problem)."""
+"""Check a round's data (after build.py expands it) before it is shown.
+Usage: check.py round.json   (exit 1 on any problem)"""
 import json, re, sys
 
-KINDS = {"report", "todo", "decide", "do", "pair", "rank", "drag", "scale", "date", "shot", "info"}
-THEMES = {"navy", "blue", "ngu", "plum", "scarlet", "teal", "gold", "forest"}
-MAX_ROWS = 8
-EMO = re.compile(r"^(?:[1-9]\uFE0F?\u20E3|[^\w\s])")
+KINDS = {"report", "todo", "decide", "do", "pair", "rank", "drag", "scale", "date"}
+QKINDS = KINDS - {"report", "todo"}
+# number keycap built with chr() on purpose: saving a skill strips the hidden character and turns escape codes back into it
+KEYCAP = "[1-9]" + chr(0xFE0F) + "?" + chr(0x20E3)
+EMO = re.compile("^(?:" + KEYCAP + r"|[^\w\s]\S*)\s+\S")
 
 
 def rows_ok(rows, w, bad):
     for x in rows:
+        if not any(k in x for k in ("p", "c", "s")):
+            bad(w, "row needs p, c or s")
         if "s" in x:
             if not EMO.match(x["s"]):
-                bad(w, f"row title needs its emoji first: {x['s'][:30]}")
+                bad(w, "row needs its emoji and a space first: " + x["s"][:30])
             m = x.get("m")
             if m is None or (isinstance(m, str) and not m.strip()) or (isinstance(m, list) and not m):
-                bad(w, f"row with nothing inside: {x['s'][:30]}")
+                bad(w, "row with nothing inside: " + x["s"][:30])
             if isinstance(m, list):
-                for y in m:
-                    if not any(k in y for k in ("p", "c", "s")):
-                        bad(w, f"inner row needs p, c or s: {x['s'][:30]}")
+                rows_ok(m, w + " > " + x["s"][:18], bad)
 
 
 def check(r):
     errs = []
+
     def bad(where, msg):
-        errs.append(f"{where}: {msg}")
+        errs.append(where + ": " + msg)
+
     if not re.fullmatch(r"[a-z]{2,8}\d{1,4}", r.get("round", "")):
         bad("round", "id must look like iqp18")
-    if r.get("theme", "navy") not in THEMES:
-        bad("theme", f"unknown theme {r.get('theme')}")
     screens = r.get("screens") or []
     if not screens:
         bad("screens", "none")
     ids = set()
     for n, q in enumerate(screens, 1):
-        w = f"screen {n}"
-        k = q.get("kind", "decide")
+        w = "screen %d" % n
+        k = q.get("kind")
         if k not in KINDS:
-            bad(w, f"unknown kind {k}")
-        if q.get("id") in ids or not q.get("id"):
+            bad(w, "unknown kind %s" % k)
+        if not q.get("id") or q.get("id") in ids:
             bad(w, "missing or repeated id")
         ids.add(q.get("id"))
-        blob = json.dumps(q, ensure_ascii=False)
-        if "—" in blob:
+        if "—" in json.dumps(q, ensure_ascii=False):
             bad(w, "em dash")
-        if k in ("report", "todo", "info"):
+        if k in ("report", "todo"):
             rows = q.get("rows") or []
             if not rows:
-                bad(w, f"{k} screen with no rows")
-            if len(rows) > MAX_ROWS and k == "todo":
-                bad(w, f"todo screen over {MAX_ROWS} rows; the engine splits it, keep steps together")
+                bad(w, k + " with no rows")
             rows_ok(rows, w, bad)
-            if k == "todo":
-                for x in rows:
-                    if not re.match(r"^[1-9]️?⃣", x.get("s", "")):
-                        bad(w, f"todo row needs a number emoji first: {x.get('s','')[:30]}")
+        if k in QKINDS and q.get("rows"):
+            rows_ok(q["rows"], w, bad)
+        if k in QKINDS and not (q.get("q") or "").strip():
+            bad(w, "question needs a short title in q")
         if k in ("decide", "do"):
             opts = q.get("options") or []
             if not 2 <= len(opts) <= 4:
                 bad(w, "needs 2 to 4 options")
             picks = [o for o in opts if o.get("pick")]
-            if q.get("multi") and picks:
-                bad(w, "multi-pick screens take no Claude pick")
             if q.get("code"):
                 if picks:
                     bad(w, "code screens take no Claude pick")
                 if not opts or "not yet" not in opts[0].get("label", "").lower():
                     bad(w, "code screens start with Not yet")
-            elif k == "decide" and not q.get("multi") and len(picks) != 1:
+            elif q.get("multi"):
+                if picks:
+                    bad(w, "multi-pick screens take no Claude pick")
+            elif len(picks) != 1:
                 bad(w, "needs exactly one Claude pick")
             for o in opts:
                 if not EMO.match(o.get("label", "")):
-                    bad(w, f"option needs its emoji first: {o.get('label','')[:30]}")
-                if "detail" in o:
-                    bad(w, "Shape 2 options carry no detail line; put it in more")
+                    bad(w, "option needs its emoji and a space first: " + o.get("label", "")[:30])
         if k == "pair":
             items = q.get("items") or []
             if not 1 <= len(items) <= 4:
@@ -82,6 +80,8 @@ def check(r):
             for it in items:
                 if not all(it.get(f) for f in ("id", "text", "a", "b")):
                     bad(w, "pair item needs id, text, a, b")
+                elif it.get("pick") not in (it.get("a"), it.get("b")):
+                    bad(w, "pair item needs a pick equal to a or b: " + it.get("text", "")[:30])
         if k in ("rank", "drag") and not 2 <= len(q.get("items") or []) <= 6:
             bad(w, "needs 2 to 6 items")
         if k == "scale" and len(q.get("ends") or []) != 2:
@@ -90,7 +90,8 @@ def check(r):
 
 
 if __name__ == "__main__":
-    r = json.load(open(sys.argv[1]))
+    with open(sys.argv[1], encoding="utf-8") as f:
+        r = json.load(f)
     e = check(r)
-    print("\n".join(e) if e else f"OK {r['round']}: {len(r['screens'])} screens")
+    print("\n".join(e) if e else "OK %s: %d screens" % (r["round"], len(r["screens"])))
     sys.exit(1 if e else 0)
