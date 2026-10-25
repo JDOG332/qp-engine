@@ -10,18 +10,18 @@ KEYCAP = "[1-9]" + chr(0xFE0F) + "?" + chr(0x20E3)
 EMO = re.compile("^(?:" + KEYCAP + r"|[^\w\s]\S*)\s+\S")
 
 
-def rows_ok(rows, w, bad):
+def rows_ok(rows, w, bad, emoji=True):
     for x in rows:
         if not any(k in x for k in ("p", "c", "s")):
             bad(w, "row needs p, c or s")
         if "s" in x:
-            if not EMO.match(x["s"]):
+            if emoji and not EMO.match(x["s"]):
                 bad(w, "row needs its emoji and a space first: " + x["s"][:30])
             m = x.get("m")
             if m is None or (isinstance(m, str) and not m.strip()) or (isinstance(m, list) and not m):
                 bad(w, "row with nothing inside: " + x["s"][:30])
             if isinstance(m, list):
-                rows_ok(m, w + " > " + x["s"][:18], bad)
+                rows_ok(m, w + " > " + x["s"][:18], bad, emoji)
 
 
 def check(r):
@@ -32,6 +32,9 @@ def check(r):
 
     if not re.fullmatch(r"[a-z]{2,8}\d{1,4}", r.get("round", "")):
         bad("round", "id must look like iqp18")
+    if r.get("ideas") is not None:
+        return check_ideas(r, errs, bad)
+
     screens = r.get("screens") or []
     if not screens:
         bad("screens", "none")
@@ -52,7 +55,7 @@ def check(r):
                 bad(w, k + " with no rows")
             rows_ok(rows, w, bad)
         if k in QKINDS and q.get("rows"):
-            rows_ok(q["rows"], w, bad)
+            rows_ok(q["rows"], w, bad, emoji=False)  # explanation rows under a question are plain words
         if k in QKINDS and not (q.get("q") or "").strip():
             bad(w, "question needs a short title in q")
         if k in ("decide", "do"):
@@ -70,9 +73,6 @@ def check(r):
                     bad(w, "multi-pick screens take no Claude pick")
             elif len(picks) != 1:
                 bad(w, "needs exactly one Claude pick")
-            for o in opts:
-                if not EMO.match(o.get("label", "")):
-                    bad(w, "option needs its emoji and a space first: " + o.get("label", "")[:30])
         if k == "pair":
             items = q.get("items") or []
             if not 1 <= len(items) <= 4:
@@ -89,9 +89,42 @@ def check(r):
     return errs
 
 
+def check_ideas(r, errs, bad):
+    """Grouped page (v1.9.0): r["ideas"] is a list of main ideas, each {t, line?, rows?, steps?, asks?}."""
+    ideas = r.get("ideas") or []
+    if not ideas:
+        bad("ideas", "none")
+    seen = set()
+    for n, I in enumerate(ideas, 1):
+        w = "idea %d" % n
+        if "—" in json.dumps(I, ensure_ascii=False):
+            bad(w, "em dash")
+        if not (I.get("t") or "").strip():
+            bad(w, "needs a short title in t")
+        if not (I.get("rows") or I.get("steps") or I.get("asks")):
+            bad(w, "empty idea: give it rows, steps or asks")
+        rows_ok(I.get("rows") or [], w, bad)
+        for x in I.get("steps") or []:
+            if not (x.get("s") or "").strip():
+                bad(w, "step needs s")
+        asks = I.get("asks") or []
+        for q in asks:
+            if q.get("id") in seen:
+                bad(w, "repeated question id " + str(q.get("id")))
+            seen.add(q.get("id"))
+        sub = check({"round": r["round"], "screens": asks}) if asks else []
+        for e in sub:
+            if not e.startswith("round"):
+                bad(w, e)
+    for q in r.get("screens") or []:
+        if q.get("kind") != "report":
+            bad("screens", "a grouped round keeps its questions inside ideas")
+    return errs
+
+
 if __name__ == "__main__":
     with open(sys.argv[1], encoding="utf-8") as f:
         r = json.load(f)
     e = check(r)
-    print("\n".join(e) if e else "OK %s: %d screens" % (r["round"], len(r["screens"])))
+    print("\n".join(e) if e else "OK %s: %d %s" % (r["round"], len(r.get("ideas") or r.get("screens") or []), "ideas" if r.get("ideas") is not None else "screens"))
     sys.exit(1 if e else 0)

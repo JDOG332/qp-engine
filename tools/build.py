@@ -4,6 +4,11 @@ Usage: build.py qp/<round>.json --cdn ENGINE_URL
 Writes qp/<round>.html (the card: show_widget it verbatim) and qp/<round>.file.html
 (the same round with the engine inside, the fallback file). Prints both paths.
 
+The grouped page (v1.9.0, the reply format): "ideas": [{"t","line"?,"rows"?,"steps"?,"asks"?,"mem"?}]
+  one numbered box per main idea, collapsed on load; t = short title, line = the gray one-line gist,
+  rows = ❌ ✅ ⚠️ 🧠 rows, steps = Jeff's checkboxes {s,m}, asks = questions (decide, pair, code, ...),
+  mem = 🧠 rows; each idea gets its own note box at the bottom. Ideas keep their order across rounds;
+  a finished idea is left out of the next round and new ideas go at the end.
 Shortcuts in the round data (all optional):
   screens without "kind" or "id": guessed (options=decide, items with a/b=pair, ends=scale,
     rows starting with a number keycap=todo, other rows=report); ids s1, s2, ...
@@ -50,29 +55,79 @@ def answered_titles(adir):
             lines = f.read().splitlines()
         for i, ln in enumerate(lines[:-1]):
             if lines[i + 1].startswith("Answer:"):
-                t = re.sub("^" + KEYCAP + r"\s*", "", ln).replace("\U0001F510 ", "").strip()
+                t = re.sub("^" + KEYCAP + r"\s*", "", ln).replace("\U0001F510 ", "")
+                t = re.sub(r"^Q: ", "", t).strip()
                 if t and t != "Steps":
                     seen.add(t)
     return seen
 
 
+def code_q(q):
+    opts = [{"label": "Not yet", "more": q.get("wait", "Nothing changes.")},
+            {"label": "\U0001F510 Approve %s: %s" % (q["code"], q["action"]), "more": q.get("more", q["action"])}]
+    return {"id": q.get("id"), "kind": "decide", "code": True, "q": q["q"], "options": opts, "rows": q.get("rows")}
+
+
+def mem_rows(mems):
+    rows = []
+    for m in mems or []:
+        inner = [{"c": m["line"]}]
+        if m.get("was"):
+            inner.append({"p": "Was: " + m["was"]})
+        rows.append({"s": "\U0001F9E0 %s %s" % ("Updated" if m.get("was") else "Added to", m["file"]), "m": inner})
+    return rows
+
+
+def expand_ideas(r, seen):
+    """Grouped page (v1.9.0): ideas keep their order; a question Jeff already answered is dropped;
+    an idea left with nothing in it is dropped."""
+    ideas, dropped, n = [], [], 0
+    for I in r.get("ideas") or []:
+        I = dict(I)
+        rows = list(I.get("rows") or []) + mem_rows(I.pop("mem", None))
+        asks = []
+        for q in I.get("asks") or []:
+            q = dict(q)
+            if q.get("kind") == "code":
+                q = code_q(q)
+            q["kind"] = guess(q)
+            if q.get("q", "").strip() in seen:
+                dropped.append(q["q"])
+                continue
+            n += 1
+            q.setdefault("id", "q%d" % n)
+            if not q.get("id"):
+                q["id"] = "q%d" % n
+            if q.get("rows") is None:
+                q.pop("rows", None)
+            asks.append(q)
+        I["rows"], I["asks"] = rows, asks
+        if rows or asks or I.get("steps"):
+            ideas.append(I)
+    if r.get("title") and ideas:
+        ideas[0]["rows"].append({"s": "✅ New chat title", "m": [{"p": "Rename this chat to:"}, {"c": r["title"]}]})
+    return ideas, dropped
+
+
 def expand(r, adir):
     out, dropped, report = [], [], None
     seen = answered_titles(adir) if adir and os.path.isdir(adir) else set()
+    if r.get("ideas") is not None:
+        ideas, dropped = expand_ideas(r, seen)
+        r = dict(r, ideas=ideas)
+        r.pop("title", None)
     for q in r.get("screens", []):
         q = dict(q)
         if q.get("kind") == "code":
-            opts = [{"label": "⏸️ Not yet", "more": q.get("wait", "Nothing changes.")},
-                    {"label": "\U0001F510 Approve %s: %s" % (q["code"], q["action"]), "more": q.get("more", q["action"])}]
-            q = {"id": q.get("id"), "kind": "decide", "code": True, "q": q["q"], "options": opts, "rows": q.get("rows")}
+            q = code_q(q)
         q["kind"] = guess(q)
-        if q["kind"] not in ("report", "todo") and q.get("q", "").replace("\U0001F510 ", "").strip() in seen:
+        if q["kind"] not in ("report", "todo") and re.sub(r"^Q: ", "", q.get("q", "").replace("\U0001F510 ", "")).strip() in seen:
             dropped.append(q["q"])
             continue
         if q["kind"] == "report" and report is None:
             report = q
         out.append(q)
-    if report is None and (r.get("mem") or r.get("title")):
+    if report is None and r.get("ideas") is None and (r.get("mem") or r.get("title")):
         report = {"kind": "report", "rows": []}
         out.insert(0, report)
     if report is not None:
@@ -157,7 +212,7 @@ def main(argv):
         fbmsg = "(fallback not built: %s)" % e
     if dropped:
         print("dropped, already answered: " + "; ".join(dropped))
-    print("OK %s: %d screens, %d bytes" % (r["round"], len(r["screens"]), len(card)))
+    print("OK %s: %d %s, %d bytes" % (r["round"], len(r.get("ideas") or r["screens"]), "ideas" if r.get("ideas") is not None else "screens", len(card)))
     print("card: " + base + ".html")
     print("fallback: " + fbmsg)
     if verdict:
