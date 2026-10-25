@@ -7,7 +7,7 @@ Writes qp/<round>.html (the card: show_widget it verbatim) and qp/<round>.file.h
 The grouped page (v1.9.0, the reply format): "ideas": [{"t","line"?,"rows"?,"steps"?,"asks"?,"mem"?}]
   one numbered box per main idea, collapsed on load; t = short title, line = the gray one-line gist,
   rows = ❌ ✅ ⚠️ 🧠 rows, steps = Jeff's checkboxes {s,m}, asks = questions (decide, pair, code, ...),
-  mem = 🧠 rows; each idea gets its own note box at the bottom. Ideas keep their order across rounds;
+  mem = 🧠 rows; each idea gets its own note box at the bottom, and there is no page note. Ideas keep their order across rounds;
   a finished idea is left out of the next round and new ideas go at the end.
 Shortcuts in the round data (all optional):
   screens without "kind" or "id": guessed (options=decide, items with a/b=pair, ends=scale,

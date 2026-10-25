@@ -161,7 +161,8 @@ function mount(R){
   P.appendChild(drop(h,inner,"ihd"))}
  if(R.ideas){R.ideas.forEach(idea)}
  (R.screens||[]).forEach(function(q){if(q.kind==="report"){report(q,sec());return}if(q.kind==="todo"){todo(q,sec());return}var lock=!!q.code,P=sec(lock?"lock":"");qhead(q,P,lock);(q.rows||[]).forEach(function(r){P.appendChild(exRow(r.s,r.m))});(KIND[q.kind]||decide)(q,P)});
- var pn=noteBox("_page","Add a note");pn.style.padding="0";ct.appendChild(pn);
+ // grouped rounds have no page note: every note goes in an idea's own note box (Jeff, 10/25)
+ var pn=R.ideas?el("div"):noteBox("_page","Add a note");if(!R.ideas){pn.style.padding="0";ct.appendChild(pn)}
  if(R.after){ct.appendChild(rich(el("p","after"),R.after))}
  var sb=el("button","send","Send ↗");sb.type="button";ct.appendChild(sb);ct.appendChild(el("div")).style.cssText="flex:none;height:8px";
  function nAnswered(){var n=0;(R.ideas||[]).forEach(function(I){(I.asks||[]).forEach(function(q){var a=A[q.id];if(a&&typeof a==="object"){if(Object.keys(a).some(function(k){return a[k]}))n++}else if(a)n++})});(R.screens||[]).forEach(function(q){var a=A[q.id];if(q.kind==="report")return;if(a&&typeof a==="object"){if(Object.keys(a).some(function(k){return a[k]}))n++}else if(a)n++});return n}
