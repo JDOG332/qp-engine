@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="1.8.4";
+var VERSION="1.8.5";
 var PAL={
 light:{accent:"#24426f",chosen:"#e2e8f2",bg:"#eef1f5",card:"#fbfcfd",soft:"#f3f5f8",line:"#d3d9e2",ink:"#232831",muted:"#6b717a",on:"#ffffff",fin:"#1d2330",fini:"#ffffff",lock:"#9a6b12",lockbg:"#faf3e4"},
 dark:{accent:"#a3bdea",chosen:"#33445f",bg:"#232934",card:"#2c3341",soft:"#313946",line:"#434c5c",ink:"#e8e6e1",muted:"#a7adb6",on:"#232934",fin:"#e8e6e1",fini:"#232934",lock:"#e0b660",lockbg:"#3a3428"}};
@@ -138,8 +138,8 @@ function mount(R){
  function report(q,P){var rows=q.rows||[],ord=["❌","✅","🧠","⚠"],groups={},rest=[];
   rows.forEach(function(r){var e=first(r.s).replace(/️/g,"");if(e==="✅"||e==="🧠"){(groups[e]=groups[e]||[]).push(r)}else rest.push(r)});
   function key(r){var e=first(r.s).replace(/️/g,""),i=ord.indexOf(e);return i<0?4:i}
-  // v1.8.4: ❌ and ⚠️ rows open by default (Jeff, engine chat); ✅ and 🧠 stay folded
-  function openRow(r){var d=exRow(r.s,r.m);var k=key(r);if(k===0||k===3)d.classList.add("open");return d}
+  // v1.8.5: every row starts collapsed, ❌ and ⚠️ included (Jeff, 10/25)
+  function openRow(r){return exRow(r.s,r.m)}
   var out=[];rest.filter(function(r){return key(r)===0}).forEach(function(r){out.push(openRow(r))});
   ["✅","🧠"].forEach(function(e){var g=groups[e];if(!g)return;if(g.length===1){out.push(exRow(g[0].s,g[0].m));return}var b=el("div","in");g.forEach(function(r){b.appendChild(exRow(r.s,r.m))});var lab=e==="✅"?g.length+" done":g.length+" memory writes";out.push(drop(lbl(e+" "+lab,"span","t"),b))});
   rest.filter(function(r){return key(r)!==0}).sort(function(a,b){return key(a)-key(b)}).forEach(function(r){out.push(openRow(r))});
