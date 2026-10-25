@@ -89,7 +89,7 @@ def expand(r, adir):
     verdict = None
     if fin:
         if fin.get("kind") == "delete":
-            verdict = "\U0001F5D1\uFE0F Safe to close & delete"
+            verdict = chr(0x1F5D1) + chr(0xFE0F) + " Safe to close & delete"  # built with chr() so a skill save cannot strip the hidden emoji marker
             inner = [{"p": "Pickup point: " + (fin.get("pickup") or "nothing to pick up")}]
             if fin.get("title"):
                 inner.append({"c": fin["title"]})
