@@ -18,8 +18,9 @@ def rows_ok(rows, w, bad, emoji=True):
             if emoji and not EMO.match(x["s"]):
                 bad(w, "row needs its emoji and a space first: " + x["s"][:30])
             m = x.get("m")
-            if m is None or (isinstance(m, str) and not m.strip()) or (isinstance(m, list) and not m):
-                bad(w, "row with nothing inside: " + x["s"][:30])
+            # v2.3: a row with no m is a plain line with no dropdown (allowed); an m that is present but empty is a mistake
+            if m is not None and ((isinstance(m, str) and not m.strip()) or (isinstance(m, list) and not m)):
+                bad(w, "row with an empty dropdown: " + x["s"][:30])
             if isinstance(m, list):
                 rows_ok(m, w + " > " + x["s"][:18], bad, emoji)
 

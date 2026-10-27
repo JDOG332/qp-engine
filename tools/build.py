@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """One command for a round: fill in defaults, drop what Jeff already answered, check, build.
-Usage: build.py qp/<round>.json --cdn ENGINE_URL
+Usage: build.py qp/<round>.json --cdn ENGINE_URL [--print] [--static-form]
+       build.py --stdin --cdn ENGINE_URL <<'EOF' ... EOF   (v2.2: the round by heredoc; saves qp/<round>.json and prints the card)
 Writes qp/<round>.html (the card: show_widget it verbatim) and qp/<round>.file.html
 (the same round with the engine inside, the fallback file). Prints both paths.
 
@@ -13,12 +14,10 @@ Shortcuts in the round data (all optional):
   screens without "kind" or "id": guessed (options=decide, items with a/b=pair, ends=scale,
     rows starting with a number keycap=todo, other rows=report); ids s1, s2, ...
   "mem": [{"file","line","was"?}]       -> 🧠 rows on the report
-  "title": "<new chat title>"           -> ✅ row with the title in a copy box
-  "finish": {"kind":"delete"|"keep","pickup":"...","title"?,"why"?} -> the end-of-chat verdict in its
+  "finish": {"kind":"delete"|"keep","pickup":"...","why"?} -> the end-of-chat verdict in its
     own box at the bottom: 🗑️ Safe to close & delete, or 💾 Safe to close, keep this chat
     (the same verdict goes on the chat line after "is ready"; build.py prints it)
   {"kind":"code","q","action","code","more"?,"rows"?} -> a 🔐 screen (Not yet, Approve NNNN)
-  "after": "what Claude does after Send" -> faint line by Send
   "shots": false                        -> leaves out the hidden screenshot send form (on by default:
     on the Mac a screenshot pasted with Cmd-V into any note reaches Claude; Jeff, iqp M1 test)
 Answered screens: every file in qp/answers/ holds one of Jeff's Sends; a question whose
@@ -104,8 +103,6 @@ def expand_ideas(r, seen):
         I["rows"], I["asks"] = rows, asks
         if rows or asks or I.get("steps"):
             ideas.append(I)
-    if r.get("title") and ideas:
-        ideas[0]["rows"].append({"s": "✅ New chat title", "m": [{"p": "Rename this chat to:"}, {"c": r["title"]}]})
     return ideas, dropped
 
 
@@ -115,7 +112,6 @@ def expand(r, adir):
     if r.get("ideas") is not None:
         ideas, dropped = expand_ideas(r, seen)
         r = dict(r, ideas=ideas)
-        r.pop("title", None)
     for q in r.get("screens", []):
         q = dict(q)
         if q.get("kind") == "code":
@@ -127,7 +123,7 @@ def expand(r, adir):
         if q["kind"] == "report" and report is None:
             report = q
         out.append(q)
-    if report is None and r.get("ideas") is None and (r.get("mem") or r.get("title")):
+    if report is None and r.get("ideas") is None and r.get("mem"):
         report = {"kind": "report", "rows": []}
         out.insert(0, report)
     if report is not None:
@@ -137,8 +133,6 @@ def expand(r, adir):
             if m.get("was"):
                 inner.append({"p": "Was: " + m["was"]})
             rows.append({"s": "\U0001F9E0 %s %s" % ("Updated" if m.get("was") else "Added to", m["file"]), "m": inner})
-        if r.get("title"):
-            rows.append({"s": "✅ New chat title", "m": [{"p": "Rename this chat to:"}, {"c": r["title"]}]})
         report["rows"] = rows
     fin = r.get("finish")
     verdict = None
@@ -146,8 +140,6 @@ def expand(r, adir):
         if fin.get("kind") == "delete":
             verdict = chr(0x1F5D1) + chr(0xFE0F) + " Safe to close & delete"  # built with chr() so a skill save cannot strip the hidden emoji marker
             inner = [{"p": "Pickup point: " + (fin.get("pickup") or "nothing to pick up")}]
-            if fin.get("title"):
-                inner.append({"c": fin["title"]})
         else:
             verdict = "\U0001F4BE Safe to close, keep this chat"
             inner = [{"p": fin.get("why") or fin.get("pickup") or "Worth keeping to look back at."}]
@@ -171,7 +163,9 @@ def html(r, engine_tag):
             .replace("</", "<\\/").replace(chr(0x2028), "\\u2028").replace(chr(0x2029), "\\u2029"))
     summary = '<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Question page round %s.</h2>' % r["round"]
     tail = '<script>if(window.QP)QP.mount(%s);else document.getElementById("qp-root").textContent="The page engine did not load. Say engine down."</script>' % data
-    parts = [summary, FONTS, '<div id="qp-root"></div>'] + ([FORM] if r.get("shots", True) else []) + [engine_tag, tail]
+    # v2.3 lean card: the engine (1.9.1+) injects the font tag and the screenshot form itself; --static-form embeds them as before
+    static = "--static-form" in sys.argv
+    parts = [summary] + ([FONTS] if static else []) + ['<div id="qp-root"></div>'] + ([FORM] if static and r.get("shots", True) else []) + [engine_tag, tail]
     return "\n".join(parts)
 
 
@@ -187,11 +181,18 @@ def engine_source(cdn):
 
 
 def main(argv):
-    path = argv[0]
     cdn = argv[argv.index("--cdn") + 1] if "--cdn" in argv else None
+    if "--stdin" in argv:
+        # one call per round (v2.2): the round comes in by heredoc, is saved as qp/<round>.json, and the card is printed
+        raw = json.load(sys.stdin)
+        path = os.path.join(HERE, raw["round"] + ".json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(raw, f, ensure_ascii=False)
+    else:
+        path = argv[0]
+        with open(path, encoding="utf-8") as f:
+            raw = json.load(f)
     adir = os.path.join(os.path.dirname(path) or ".", "answers")
-    with open(path, encoding="utf-8") as f:
-        raw = json.load(f)
     r, dropped = expand(raw, adir)
     verdict = r.pop("_verdict", None)
     errs = check(r)
@@ -217,6 +218,12 @@ def main(argv):
     print("fallback: " + fbmsg)
     if verdict:
         print("chat line ends: · " + verdict)
+    if "--print" in argv:
+        print("==== card (paste into show_widget verbatim) ====")
+        print(card)
+    elif "--stdin" in argv:
+        print("card wrapper (v2.3): paste this, with the round JSON in place of ROUND, into show_widget; the engine adds the font and the form itself")
+        print(html(dict(r, ideas=None) if False else {"round": r["round"], "ideas": "ROUND"}, '<script src="%s"></script>' % cdn if cdn else "").replace('{"round":"%s","ideas":"ROUND"}' % r["round"], "ROUND"))
     return 0
 
 
