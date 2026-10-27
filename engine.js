@@ -1,6 +1,7 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="1.9.1";
+var VERSION="1.9.2";
+// v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
 var FORM="<div id=\"qp-stash\" style=\"position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none\" aria-hidden=\"true\"><form class=\"elicit\"><div class=\"elicit-header\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\"><path d=\"M11.586 2a1.5 1.5 0 0 1 1.06.44l2.914 2.914a1.5 1.5 0 0 1 .44 1.06V16.5a1.5 1.5 0 0 1-1.5 1.5h-9a1.5 1.5 0 0 1-1.492-1.347L4 16.5v-13A1.5 1.5 0 0 1 5.5 2zM5.5 3a.5.5 0 0 0-.5.5v13a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V7h-2.5A1.5 1.5 0 0 1 11 5.5V3zm7.04 10.304a.5.5 0 0 1 .92.392c-.295.69-.871 1.304-1.66 1.304-.487 0-.892-.234-1.2-.574-.309.34-.713.574-1.2.574-.486 0-.892-.233-1.2-.574-.31.34-.714.574-1.2.574a.5.5 0 0 1 0-1c.212 0 .52-.18.74-.696l.034-.067a.5.5 0 0 1 .886.067c.221.516.528.696.74.696.213 0 .52-.18.74-.696l.035-.067a.5.5 0 0 1 .885.067c.22.516.527.696.74.696s.519-.18.74-.696m0-4a.5.5 0 0 1 .92.392c-.295.69-.871 1.304-1.66 1.304-.487 0-.892-.234-1.2-.574-.309.34-.713.574-1.2.574-.486 0-.892-.233-1.2-.574-.31.34-.714.574-1.2.574a.5.5 0 0 1 0-1c.212 0 .52-.18.74-.696l.034-.067a.5.5 0 0 1 .886.067c.221.516.528.696.74.696.213 0 .52-.18.74-.696l.035-.067a.5.5 0 0 1 .885.067c.22.516.527.696.74.696s.519-.18.74-.696M12 5.5a.5.5 0 0 0 .5.5h2.293L12 3.207z\"/></svg><span>Answer details</span></div><div class=\"elicit-body\"><div class=\"elicit-group\"><label class=\"elicit-question\">Screenshots</label><div class=\"elicit-files\" data-name=\"screenshots\"><label class=\"elicit-dropzone\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\"><path d=\"M16.5 13a.5.5 0 0 1 .5.5v2a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 15.5v-2a.5.5 0 0 1 1 0v2a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 .5-.5M10 3a.5.5 0 0 1 .374.168l4 4.5.059.082a.5.5 0 0 1-.732.65l-.075-.068L10.5 4.814V13.5a.5.5 0 0 1-1 0V4.814L6.374 8.332a.5.5 0 0 1-.748-.664l4-4.5.08-.071A.5.5 0 0 1 10 3\"/></svg><span>Choose file</span><input type=\"file\" multiple></label></div><textarea class=\"elicit-textarea\" data-name=\"answers\" placeholder=\"answers\"></textarea></div></div><div class=\"elicit-footer\"><button type=\"button\" class=\"elicit-skip\">Skip</button><button type=\"button\" class=\"elicit-submit\">Send</button></div></form></div>";
 var PAL={
@@ -146,15 +147,10 @@ function mount(R){
    r.addEventListener("pointerup",end);r.addEventListener("pointercancel",end)})}paint()}
  function todo(q,P){A[q.id]={};q.rows.forEach(function(x,k){var id=x.id||String(k),n=kc(),txt=String(x.s||"").replace(/^\S+\s+/,"");var h=el("span","hi"),bx=el("span","box","");bx.setAttribute("role","checkbox");bx.setAttribute("aria-checked","false");h.append(bx,el("span","em",n),rich(el("span","tx"),txt));
   var d=drop(h,body(x.m),"td");x._n=n;x._t=txt;bx.onclick=function(e){e.stopPropagation();var on=!A[q.id][id];A[q.id][id]=on;bx.textContent=on?"✓":"";bx.setAttribute("aria-checked",on?"true":"false");d.classList.toggle("done",on)};P.appendChild(d)})}
- function report(q,P){var rows=q.rows||[],ord=["❌","✅","🧠","⚠"],groups={},rest=[];
-  rows.forEach(function(r){var e=first(r.s).replace(/️/g,"");if(e==="✅"||e==="🧠"){(groups[e]=groups[e]||[]).push(r)}else rest.push(r)});
+ function report(q,P){var rows=q.rows||[],ord=["❌","✅","🧠","⚠"];
   function key(r){var e=first(r.s).replace(/️/g,""),i=ord.indexOf(e);return i<0?4:i}
-  // v1.8.5: every row starts collapsed, ❌ and ⚠️ included (Jeff, 10/25)
-  function openRow(r){return exRow(r.s,r.m)}
-  var out=[];rest.filter(function(r){return key(r)===0}).forEach(function(r){out.push(openRow(r))});
-  ["✅","🧠"].forEach(function(e){var g=groups[e];if(!g)return;if(g.length===1){out.push(exRow(g[0].s,g[0].m));return}var b=el("div","in");g.forEach(function(r){b.appendChild(exRow(r.s,r.m))});var lab=e==="✅"?g.length+" done":g.length+" memory writes";out.push(drop(lbl(e+" "+lab,"span","t"),b))});
-  rest.filter(function(r){return key(r)!==0}).sort(function(a,b){return key(a)-key(b)}).forEach(function(r){out.push(openRow(r))});
-  out.forEach(function(o){P.appendChild(o)})}
+  // v1.9.2: no folding (Jeff, 10/27): every row shows as its own line once its idea is open, ordered ❌ ✅ 🧠 ⚠️; each row keeps its own dropdown for detail
+  rows.map(function(r,i){return {r:r,i:i}}).sort(function(a,b){return key(a.r)-key(b.r)||a.i-b.i}).forEach(function(o){P.appendChild(exRow(o.r.s,o.r.m))})}
  var KIND={decide:decide,do:decide,pair:pair,scale:scale,date:datePick,rank:rank,drag:drag};
  // v1.9.0: the page is grouped by main idea (Jeff, 10/25): each idea is one numbered box, collapsed on load, with its rows, steps, questions and its own note box
  function idea(I,k){var P=sec("idea"),n=KC[k]||String(k+1);I._n=n;var h=el("span","hi"),ih=el("span","ih");ih.appendChild(rich(el("span","it"),I.t));if(I.line)ih.appendChild(rich(el("span","il"),I.line));h.append(el("span","em",n),ih);
