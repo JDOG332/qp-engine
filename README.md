@@ -8,6 +8,10 @@ Rounds load a fixed version through jsDelivr, for example:
 
 https://cdn.jsdelivr.net/gh/JDOG332/qp-engine@<full commit sha>/engine.js (pinned by commit; tags are not used)
 
+## v1.16.2
+
+The newly opened box opens at once, and when the card can't see the screen the header is sent to the top again a few times in the first second (stopping as soon as Jeff touches the screen), since the iPhone app can move the card again as its frame resizes.
+
 ## v1.16.1
 
 When the card can't tell where the screen is (the iPhone app), the tapped box's header goes to the top of the screen after the box above closes, instead of the screen landing at the bottom of the new box. `QP.last` names the path taken, for testing.
