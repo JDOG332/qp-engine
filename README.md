@@ -8,6 +8,10 @@ Rounds load a fixed version through jsDelivr, for example:
 
 https://cdn.jsdelivr.net/gh/JDOG332/qp-engine@<full commit sha>/engine.js (pinned by commit; tags are not used)
 
+## v2.0.0
+
+One screen per idea is the default layout for grouped rounds: each idea is its own screen, already open, with Back and Next at the bottom and a small faint number bar at the top to jump to any screen. The last screen adds Submit all answers (bold, filled) and Next wraps to screen 1. Every card is 680 tall on the iPhone and the Mac; a topic too tall moves its last items onto its own next screen, titled 1/2, 2/2. One note bar per screen sits at the bottom: tap once and type, with a 📎 beside it. Answers and dates are straight full-width lines; every row is one line, with its detail in the dropdown. The Close this box button is gone. A round with `"layout":"boxes"` still draws the v1.16 boxes.
+
 ## v1.16.2
 
 The newly opened box opens at once, and when the card can't see the screen the header is sent to the top again a few times in the first second (stopping as soon as Jeff touches the screen), since the iPhone app can move the card again as its frame resizes.
