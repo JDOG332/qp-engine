@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="1.10.1";
+var VERSION="1.11.0";
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
 var FORM="<div id=\"qp-stash\" style=\"position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none\" aria-hidden=\"true\"><form class=\"elicit\"><div class=\"elicit-header\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\"><path d=\"M11.586 2a1.5 1.5 0 0 1 1.06.44l2.914 2.914a1.5 1.5 0 0 1 .44 1.06V16.5a1.5 1.5 0 0 1-1.5 1.5h-9a1.5 1.5 0 0 1-1.492-1.347L4 16.5v-13A1.5 1.5 0 0 1 5.5 2zM5.5 3a.5.5 0 0 0-.5.5v13a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V7h-2.5A1.5 1.5 0 0 1 11 5.5V3zm7.04 10.304a.5.5 0 0 1 .92.392c-.295.69-.871 1.304-1.66 1.304-.487 0-.892-.234-1.2-.574-.309.34-.713.574-1.2.574-.486 0-.892-.233-1.2-.574-.31.34-.714.574-1.2.574a.5.5 0 0 1 0-1c.212 0 .52-.18.74-.696l.034-.067a.5.5 0 0 1 .886.067c.221.516.528.696.74.696.213 0 .52-.18.74-.696l.035-.067a.5.5 0 0 1 .885.067c.22.516.527.696.74.696s.519-.18.74-.696m0-4a.5.5 0 0 1 .92.392c-.295.69-.871 1.304-1.66 1.304-.487 0-.892-.234-1.2-.574-.309.34-.713.574-1.2.574-.486 0-.892-.233-1.2-.574-.31.34-.714.574-1.2.574a.5.5 0 0 1 0-1c.212 0 .52-.18.74-.696l.034-.067a.5.5 0 0 1 .886.067c.221.516.528.696.74.696.213 0 .52-.18.74-.696l.035-.067a.5.5 0 0 1 .885.067c.22.516.527.696.74.696s.519-.18.74-.696M12 5.5a.5.5 0 0 0 .5.5h2.293L12 3.207z\"/></svg><span>Answer details</span></div><div class=\"elicit-body\"><div class=\"elicit-group\"><label class=\"elicit-question\">Screenshots</label><div class=\"elicit-files\" data-name=\"screenshots\"><label class=\"elicit-dropzone\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\"><path d=\"M16.5 13a.5.5 0 0 1 .5.5v2a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 15.5v-2a.5.5 0 0 1 1 0v2a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 .5-.5M10 3a.5.5 0 0 1 .374.168l4 4.5.059.082a.5.5 0 0 1-.732.65l-.075-.068L10.5 4.814V13.5a.5.5 0 0 1-1 0V4.814L6.374 8.332a.5.5 0 0 1-.748-.664l4-4.5.08-.071A.5.5 0 0 1 10 3\"/></svg><span>Choose file</span><input type=\"file\" multiple></label></div><textarea class=\"elicit-textarea\" data-name=\"answers\" placeholder=\"answers\"></textarea></div></div><div class=\"elicit-footer\"><button type=\"button\" class=\"elicit-skip\">Skip</button><button type=\"button\" class=\"elicit-submit\">Send</button></div></form></div>";
@@ -72,7 +72,13 @@ var CSS=
 ".qp .sec.idea>.ex>.w>.m>.in{gap:12px;padding:0 8px 12px 8px}"+
 ".qp .ak{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}.qp .ak.lock{border:2px solid var(--lock);border-left:8px solid var(--lock);background:var(--lockbg);border-radius:10px;padding:8px}"+
 ".qp .ak .aq{font-weight:700}.qp .st{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:8px}"+
-".qp .inote{border-top:1px solid var(--line);padding-top:12px}.qp .inote>.in{padding:0}";
+".qp .inote{border-top:1px solid var(--line);padding-top:12px}.qp .inote>.in{padding:0}"+
+".qp .cap{color:var(--muted);font-weight:400}.qp .cap.full{color:var(--accent);font-weight:600}"+
+".qp .nm{display:grid;grid-template-columns:56px 1fr 56px;gap:8px}.qp .nm .bt{font-size:1.3em}"+
+".qp input.nv{font:inherit;font-weight:600;min-height:48px;width:100%;box-sizing:border-box;text-align:center;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);padding:0 8px}"+
+".qp input.nv.pick{border:2.5px dashed var(--accent)}.qp input.nv.set{border:2.5px solid var(--accent);background:var(--chosen)}.qp input.nv:focus{outline:none;border-color:var(--accent)}.qp input.nv::placeholder{color:var(--muted);opacity:.8}"+
+".qp .gq{display:flex;flex-wrap:wrap;gap:8px}.qp .gq .bt{flex:1 1 auto}.qp .nu{color:var(--muted);text-align:center}"+
+".qp textarea.tx.set{border-color:var(--accent)}";
 var KC=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"];
 var EMO=/^([\p{Extended_Pictographic}\p{Emoji_Component}⃣️‍\d]+)\s+(\S[\s\S]*)$/u;
 var DN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],MAXSHOTS=10;
@@ -90,7 +96,7 @@ function guessKind(q){if(q.kind)return q.kind;if("options" in q)return "decide";
 function fixPair(q){if(q.kind==="pair"){q.items=(q.items||[]).map(function(it){it=Object.assign({},it);var p=it.pick;if((p==="a"||p==="b")&&p!==it.a&&p!==it.b)it.pick=it[p];return it})}return q}
 function codeQ(q){var o=[{label:"Not yet",more:q.wait||"Nothing changes."},{label:"🔐 Approve "+q.code+": "+q.action,more:q.more||q.action}];var r={id:q.id,kind:"decide",code:true,q:q.q,options:o};if(q.rows!=null)r.rows=q.rows;return r}
 function memRows(ms){return(ms||[]).map(function(m){var inner=[{c:m.line}];if(m.was)inner.push({p:"Was: "+m.was});return{s:"🧠 "+(m.was?"Updated":"Added to")+" "+m.file+(m.sha?" · "+m.sha:""),m:inner}})}
-function prepQ(q){q=Object.assign({},q);if(q.kind==="code")q=codeQ(q);q.kind=guessKind(q);fixPair(q);return q}
+function prepQ(q){q=Object.assign({},q);if(q.kind==="code")q=codeQ(q);if(q.kind==="multi"){q.kind="decide";q.multi=true}q.kind=guessKind(q);fixPair(q);return q}
 function prep(R){if(R._prepped)return R;R=Object.assign({},R);var n=0;
  if(R.ideas!=null){R.ideas=R.ideas.map(function(I){I=Object.assign({},I);var rows=(I.rows||[]).concat(memRows(I.mem));delete I.mem;
   var asks=(I.asks||[]).map(function(q){q=prepQ(q);n++;if(!q.id)q.id="q"+n;if(q.rows==null)delete q.rows;return q});I.rows=rows;I.asks=asks;return I}).filter(function(I){return I.rows.length||I.asks.length||(I.steps||[]).length})}
@@ -100,7 +106,7 @@ function prep(R){if(R._prepped)return R;R=Object.assign({},R);var n=0;
  var f=R.finish;if(f)R._finish=true;if(f){var v,inner;if(f.kind==="delete"){v="🗑️ Safe to close & delete";inner=[{p:"Pickup point: "+(f.pickup||"nothing to pick up")}]}else{v="💾 Safe to close, keep this chat";inner=[{p:f.why||f.pickup||"Worth keeping to look back at."}]}out.push({kind:"report",rows:[{s:v,m:inner}]})}
  out.forEach(function(q,i){if(!q.id)q.id="s"+(i+1);if(q.rows==null)delete q.rows});
  ["mem","title","finish","theme"].forEach(function(k){delete R[k]});R.screens=out;R._prepped=true;return R}
-var KINDS=["report","todo","decide","do","pair","rank","drag","scale","date"],QKINDS=KINDS.slice(2);
+var KINDS=["report","todo","decide","do","pair","rank","drag","scale","date","number","text"],QKINDS=KINDS.slice(2);
 var EMO_CK=new RegExp("^(?:"+KEYCAP_RX+"|[^\\p{L}\\p{N}_\\s]\\S*)\\s+\\S","u");
 function rowsOk(rows,w,bad,emoji){(rows||[]).forEach(function(x){if(!("p" in x||"c" in x||"s" in x))bad(w,"row needs p, c or s");
  if("s" in x){if(emoji&&!EMO_CK.test(x.s||""))bad(w,"row needs its emoji and a space first: "+String(x.s).slice(0,30));var m=x.m;
@@ -116,13 +122,15 @@ function check(R,errs){errs=errs||[];function bad(w,m){errs.push(w+": "+m)}
   if(k==="report"||k==="todo"){if(!(q.rows||[]).length)bad(w,k+" with no rows");rowsOk(q.rows,w,bad,true)}
   var isQ=QKINDS.indexOf(k)>=0;if(isQ&&q.rows&&q.rows.length)rowsOk(q.rows,w,bad,false);
   if(isQ&&!String(q.q||"").trim())bad(w,"question needs a short title in q");
-  if(k==="decide"||k==="do"){var o=q.options||[],p=o.filter(function(x){return x.pick});if(o.length<2||o.length>4)bad(w,"needs 2 to 4 options");
+  if(k==="decide"||k==="do"){var o=q.options||[],p=o.filter(function(x){return x.pick});if(q.multi){if(o.length<2||o.length>8)bad(w,"pick-several needs 2 to 8 options");if(q.max!=null&&!(q.max>=1&&q.max<o.length&&q.max%1===0))bad(w,"max must be a whole number from 1 to one less than the options")}else if(o.length<2||o.length>4)bad(w,"needs 2 to 4 options");
    if(q.code){if(p.length)bad(w,"code screens take no Claude pick");if(!o.length||String(o[0].label||"").toLowerCase().indexOf("not yet")<0)bad(w,"code screens start with Not yet")}
-   else if(q.multi){if(p.length)bad(w,"multi-pick screens take no Claude pick")}else if(p.length!==1)bad(w,"needs exactly one Claude pick")}
+   else if(q.multi){if(q.max!=null&&p.length>q.max)bad(w,"more Claude picks than max")}else if(p.length!==1)bad(w,"needs exactly one Claude pick")}
   if(k==="pair"){var it=q.items||[];if(it.length<1||it.length>4)bad(w,"pair needs 1 to 4 items");
    it.forEach(function(x){if(!(x.id&&x.text&&x.a&&x.b))bad(w,"pair item needs id, text, a, b");else if(x.pick!==x.a&&x.pick!==x.b)bad(w,'pair item "'+String(x.text).slice(0,30)+'": pick must be exactly "'+x.a+'" or "'+x.b+'"')})}
   if((k==="rank"||k==="drag")&&((q.items||[]).length<2||(q.items||[]).length>6))bad(w,"needs 2 to 6 items");
-  if(k==="scale"&&(q.ends||[]).length!==2)bad(w,"needs two end labels")});return errs}
+  if(k==="scale"&&(q.ends||[]).length!==2)bad(w,"needs two end labels");
+  if(k==="number"){["min","max","step","pick"].forEach(function(f){if(q[f]!=null&&typeof q[f]!=="number")bad(w,f+" must be a number")});if(q.min!=null&&q.max!=null&&q.min>=q.max)bad(w,"min must be below max");if(q.pick!=null&&((q.min!=null&&q.pick<q.min)||(q.max!=null&&q.pick>q.max)))bad(w,"pick is outside min to max");if(q.quick!=null&&(!Array.isArray(q.quick)||q.quick.length>6||q.quick.some(function(v){return typeof v!=="number"})))bad(w,"quick must be up to 6 numbers")}
+  if(k==="text"&&q.ph!=null&&typeof q.ph!=="string")bad(w,"ph must be text")});return errs}
 function checkIdeas(R,errs,bad){var I=R.ideas||[];if(!I.length)bad("ideas","none");var seen={};
  I.forEach(function(x,i){var w="idea "+(i+1);if(JSON.stringify(x).indexOf("—")>=0)bad(w,"em dash");if(!String(x.t||"").trim())bad(w,"needs a short title in t");
   if(!((x.rows||[]).length||(x.steps||[]).length||(x.asks||[]).length))bad(w,"empty idea: give it rows, steps or asks");
@@ -180,11 +188,24 @@ function mount(R){
  pick.onchange=function(){if(shotTarget){addShots(shotTarget.id,pick.files);shotTarget.done()}pick.value=""};
  function qhead(q,P,lock){q._n=kc();var t=(lock?"🔐 ":"")+(q.q||"Question");var h=el("span","hi qt");h.append(el("span","em",q._n),rich(el("span","tx"),t));P.appendChild(drop(h,noteBox(q.id),"qh"))}
  function choose(q,v){A[q.id]=A[q.id]===v?"":v;return A[q.id]}
- function optRow(q,o,group){var b=el("div","op"+(o.pick&&!q.multi&&!q.code?" pick":"")),row=el("div","row"),l=lbl(o.label,"span","lb");b.setAttribute("role","button");b.setAttribute("aria-pressed","false");row.appendChild(l);b.appendChild(row);
+ function optRow(q,o,group){var b=el("div","op"+(o.pick&&!q.code?" pick":"")),row=el("div","row"),l=lbl(o.label,"span","lb");b.setAttribute("role","button");b.setAttribute("aria-pressed","false");row.appendChild(l);b.appendChild(row);
   if(o.more){var mo=el("span","mo");mo.setAttribute("aria-label","More");var w=el("div","w"),m=el("div","m");m.appendChild(body(o.more));w.appendChild(m);row.appendChild(mo);b.appendChild(w);mo.onclick=function(e){e.stopPropagation();var was=b.classList.contains("open");closeSibs(b);b.classList.toggle("open",!was)}}
-  b.onclick=function(e){var ci=e.target.closest&&e.target.closest(".in");if(ci&&b.contains(ci))return;if(q.multi){var cur=(A[q.id]||"").split("; ").filter(Boolean),i=cur.indexOf(o.label);if(i>=0)cur.splice(i,1);else cur.push(o.label);A[q.id]=q.options.map(function(x){return x.label}).filter(function(x){return cur.indexOf(x)>=0}).join("; ");b.setAttribute("aria-pressed",i>=0?"false":"true");return}
+  b.onclick=function(e){var ci=e.target.closest&&e.target.closest(".in");if(ci&&b.contains(ci))return;if(q.multi){var cur=(A[q.id]||"").split("; ").filter(Boolean),i=cur.indexOf(o.label);if(i<0&&q.max&&cur.length>=q.max){if(q._cap){q._cap.classList.add("full");setTimeout(function(){q._cap.classList.remove("full")},1200)}return}if(i>=0)cur.splice(i,1);else cur.push(o.label);A[q.id]=q.options.map(function(x){return x.label}).filter(function(x){return cur.indexOf(x)>=0}).join("; ");b.setAttribute("aria-pressed",i>=0?"false":"true");return}
    var v=choose(q,o.label);group.forEach(function(x){x.setAttribute("aria-pressed","false")});if(v)b.setAttribute("aria-pressed","true")};group.push(b);return b}
- function decide(q,P){var g=[];q.options.forEach(function(o){P.appendChild(optRow(q,o,g))})}
+ function decide(q,P){var g=[];if(q.multi){q._cap=el("p","cap",q.max?"Pick up to "+q.max:"Pick all that fit");q._cap.style.margin="0";P.appendChild(q._cap)}q.options.forEach(function(o){P.appendChild(optRow(q,o,g))})}
+ // v1.11.0: number and text, carried over from the deep-interview widget (Jeff, 10/29)
+ function fmtN(v){return String(Math.round(v*1e6)/1e6)}
+ function number(q,P){var st=q.step||1,u=q.unit?" "+q.unit:"",val=null,w=el("div","nm"),mi=el("button","bt","\u2212"),pl=el("button","bt","+"),inp=el("input","nv"+(q.pick!=null?" pick":""));mi.type=pl.type="button";mi.setAttribute("aria-label","Less");pl.setAttribute("aria-label","More");
+  inp.type="text";inp.setAttribute("inputmode","decimal");inp.placeholder=q.pick!=null?fmtN(q.pick)+u:(q.unit||"Number");inp.onclick=function(e){e.stopPropagation()};
+  function clamp(v){if(q.min!=null&&v<q.min)v=q.min;if(q.max!=null&&v>q.max)v=q.max;return v}
+  function set(v){val=v;if(v==null){inp.value="";A[q.id]="";inp.classList.remove("set")}else{inp.value=fmtN(v);A[q.id]=fmtN(v)+u;inp.classList.add("set")}qb.forEach(function(b){b.setAttribute("aria-pressed",v!=null&&b._v===v?"true":"false")})}
+  function bump(d){var base=val!=null?val:(q.pick!=null?q.pick:(q.min!=null?q.min:0));set(clamp(val==null&&q.pick!=null?base:base+d*st))}
+  mi.onclick=function(e){e.stopPropagation();bump(-1)};pl.onclick=function(e){e.stopPropagation();bump(1)};
+  inp.oninput=function(){var t=inp.value.replace(/[^0-9.\-]/g,"");if(t===""||isNaN(+t)){val=null;A[q.id]="";inp.classList.remove("set");return}val=+t;A[q.id]=fmtN(val)+u;inp.classList.add("set")};
+  inp.onblur=function(){if(val!=null)set(clamp(val))};
+  w.append(mi,inp,pl);P.appendChild(w);var qb=[];if((q.quick||[]).length){var g=el("div","gq");q.quick.forEach(function(v){var b=el("button","bt"+(q.pick===v?" pick":""),fmtN(v)+u);b.type="button";b._v=v;b.setAttribute("aria-pressed","false");b.onclick=function(e){e.stopPropagation();set(val===v?null:v)};qb.push(b);g.appendChild(b)});P.appendChild(g)}
+  if(q.min!=null||q.max!=null){P.appendChild(el("p","nu",(q.min!=null?fmtN(q.min):"")+" to "+(q.max!=null?fmtN(q.max):"")+u)).style.margin="0"}}
+ function textQ(q,P){var t=el("textarea","tx");t.placeholder=q.ph||"Type or dictate";t.onclick=function(e){e.stopPropagation()};t.oninput=function(){A[q.id]=t.value.trim();t.classList.toggle("set",!!A[q.id])};P.appendChild(t)}
  function pair(q,P){A[q.id]={};q.items.forEach(function(it){var r=el("div","pr"),sg=el("div","g2"),bs=[];r.appendChild(lbl(it.text,"span"));[it.a,it.b].forEach(function(v){var b=el("button","bt"+(it.pick===v?" pick":""),v);b.type="button";b.setAttribute("aria-pressed","false");b.onclick=function(){var on=A[q.id][it.id]!==v;A[q.id][it.id]=on?v:"";bs.forEach(function(x){x.setAttribute("aria-pressed","false")});if(on)b.setAttribute("aria-pressed","true")};bs.push(b);sg.appendChild(b)});r.appendChild(sg);P.appendChild(r)})}
  function scale(q,P){var g=el("div","g5"),bs=[];[1,2,3,4,5].forEach(function(n){var v=n+" of 5",b=el("button","bt"+(q.pick===n?" pick":""),String(n));b.type="button";b.setAttribute("aria-pressed","false");b.onclick=function(){var x=choose(q,v);bs.forEach(function(y){y.setAttribute("aria-pressed","false")});if(x)b.setAttribute("aria-pressed","true")};bs.push(b);g.appendChild(b)});var e=el("p","ends");e.append(el("span",null,"1 · "+((q.ends||[])[0]||"")),el("span",null,((q.ends||[])[1]||"")+" · 5"));P.append(g,e)}
  function datePick(q,P){var t=new Date();t.setHours(0,0,0,0);var d1=new Date(t.getFullYear(),t.getMonth(),t.getDate()+1),sat=new Date(t.getFullYear(),t.getMonth(),t.getDate()+((6-t.getDay()+7)%7||7));var g=el("div","g2"),bs=[];
@@ -204,7 +225,7 @@ function mount(R){
   function key(r){var e=first(r.s).replace(/️/g,""),i=ord.indexOf(e);return i<0?4:i}
   // v1.9.2: no folding (Jeff, 10/27): every row shows as its own line once its idea is open, ordered ❌ ✅ 🧠 ⚠️; each row keeps its own dropdown for detail
   rows.map(function(r,i){return {r:r,i:i}}).sort(function(a,b){return key(a.r)-key(b.r)||a.i-b.i}).forEach(function(o){P.appendChild(exRow(o.r.s,o.r.m))})}
- var KIND={decide:decide,do:decide,pair:pair,scale:scale,date:datePick,rank:rank,drag:drag};
+ var KIND={decide:decide,do:decide,pair:pair,scale:scale,date:datePick,rank:rank,drag:drag,number:number,text:textQ};
  // v1.9.0: the page is grouped by main idea (Jeff, 10/25): each idea is one numbered box, collapsed on load, with its rows, steps, questions and its own note box
  function idea(I,k){var P=sec("idea"),n=KC[k]||String(k+1);I._n=n;var h=el("span","hi"),ih=el("span","ih");ih.appendChild(rich(el("span","it"),I.t));if(I.line)ih.appendChild(rich(el("span","il"),I.line));h.append(el("span","em",n),ih);
   var inner=el("div","in");if((I.rows||[]).length){var rp=el("div");rp.style.cssText="display:flex;flex-direction:column;gap:8px";report({rows:I.rows},rp);inner.appendChild(rp)}

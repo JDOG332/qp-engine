@@ -19,6 +19,9 @@ Shortcuts in the round data (all optional):
     own box at the bottom: 🗑️ Safe to close & delete, or 💾 Safe to close, keep this chat
     (the same verdict goes on the chat line after "is ready"; build.py prints it)
   {"kind":"code","q","action","code","more"?,"rows"?} -> a 🔐 screen (Not yet, Approve NNNN)
+  {"kind":"multi","q","options" 2 to 8,"max"?} -> pick several (any number of Claude picks, up to max)
+  {"kind":"number","q","min"?,"max"?,"step"?,"unit"?,"pick"?,"quick"?} -> minus, the number, plus; quick = up to 6 one-tap values
+  {"kind":"text","q","ph"?} -> a box to type or dictate into; ph = the concrete prompt
   "shots": false                        -> leaves out the hidden screenshot send form (on by default:
     on the Mac a screenshot pasted with Cmd-V into any note reaches Claude; Jeff, iqp M1 test)
 Answered screens: every file in qp/answers/ holds one of Jeff's Sends; a question whose
@@ -110,6 +113,8 @@ def expand_ideas(r, seen):
             q = dict(q)
             if q.get("kind") == "code":
                 q = code_q(q)
+            if q.get("kind") == "multi":
+                q["kind"], q["multi"] = "decide", True
             q["kind"] = guess(q)
             fix_pair(q)
             if q.get("q", "").strip() in seen:
@@ -138,6 +143,8 @@ def expand(r, adir):
         q = dict(q)
         if q.get("kind") == "code":
             q = code_q(q)
+        if q.get("kind") == "multi":
+            q["kind"], q["multi"] = "decide", True
         q["kind"] = guess(q)
         fix_pair(q)
         if q["kind"] not in ("report", "todo") and re.sub(r"^Q: ", "", q.get("q", "").replace("\U0001F510 ", "")).strip() in seen:

@@ -3,7 +3,7 @@
 Usage: check.py round.json   (exit 1 on any problem)"""
 import json, re, sys
 
-KINDS = {"report", "todo", "decide", "do", "pair", "rank", "drag", "scale", "date"}
+KINDS = {"report", "todo", "decide", "do", "pair", "rank", "drag", "scale", "date", "number", "text"}
 QKINDS = KINDS - {"report", "todo"}
 # number keycap built with chr() on purpose: saving a skill strips the hidden character and turns escape codes back into it
 KEYCAP = "[1-9]" + chr(0xFE0F) + "?" + chr(0x20E3)
@@ -61,7 +61,13 @@ def check(r):
             bad(w, "question needs a short title in q")
         if k in ("decide", "do"):
             opts = q.get("options") or []
-            if not 2 <= len(opts) <= 4:
+            if q.get("multi"):
+                if not 2 <= len(opts) <= 8:
+                    bad(w, "pick-several needs 2 to 8 options")
+                mx = q.get("max")
+                if mx is not None and not (isinstance(mx, int) and 1 <= mx < len(opts)):
+                    bad(w, "max must be a whole number from 1 to one less than the options")
+            elif not 2 <= len(opts) <= 4:
                 bad(w, "needs 2 to 4 options")
             picks = [o for o in opts if o.get("pick")]
             if q.get("code"):
@@ -70,8 +76,8 @@ def check(r):
                 if not opts or "not yet" not in opts[0].get("label", "").lower():
                     bad(w, "code screens start with Not yet")
             elif q.get("multi"):
-                if picks:
-                    bad(w, "multi-pick screens take no Claude pick")
+                if q.get("max") is not None and len(picks) > q["max"]:
+                    bad(w, "more Claude picks than max")
             elif len(picks) != 1:
                 bad(w, "needs exactly one Claude pick")
         if k == "pair":
@@ -87,6 +93,20 @@ def check(r):
             bad(w, "needs 2 to 6 items")
         if k == "scale" and len(q.get("ends") or []) != 2:
             bad(w, "needs two end labels")
+        if k == "number":
+            for f in ("min", "max", "step", "pick"):
+                if q.get(f) is not None and not isinstance(q[f], (int, float)):
+                    bad(w, f + " must be a number")
+            lo, hi, pk = q.get("min"), q.get("max"), q.get("pick")
+            if lo is not None and hi is not None and lo >= hi:
+                bad(w, "min must be below max")
+            if pk is not None and ((lo is not None and pk < lo) or (hi is not None and pk > hi)):
+                bad(w, "pick is outside min to max")
+            qk = q.get("quick")
+            if qk is not None and (not isinstance(qk, list) or len(qk) > 6 or any(not isinstance(v, (int, float)) for v in qk)):
+                bad(w, "quick must be up to 6 numbers")
+        if k == "text" and q.get("ph") is not None and not isinstance(q["ph"], str):
+            bad(w, "ph must be text")
     return errs
 
 
