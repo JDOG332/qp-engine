@@ -159,6 +159,11 @@ def expand(r, adir):
         report["rows"] = rows
     fin = r.get("finish")
     verdict = None
+    if fin and r.get("ideas"):
+        # Jeff 2026-10-28: never safe to close while he still has something to do
+        left = [I.get("t", "") for I in r["ideas"] if I.get("steps") or I.get("asks")]
+        if left:
+            raise SystemExit("finish refused: steps or questions still open in: " + "; ".join(left) + " (core/inline-page.md, End of a chat)")
     if fin:
         if fin.get("kind") == "delete":
             verdict = chr(0x1F5D1) + chr(0xFE0F) + " Safe to close & delete"  # built with chr() so a skill save cannot strip the hidden emoji marker
