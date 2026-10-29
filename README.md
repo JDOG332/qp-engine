@@ -8,6 +8,10 @@ Rounds load a fixed version through jsDelivr, for example:
 
 https://cdn.jsdelivr.net/gh/JDOG332/qp-engine@<full commit sha>/engine.js (pinned by commit; tags are not used)
 
+## v1.13.0
+
+A "Close this box" button at the end of every idea box in a grouped round: it folds the box and brings its header back into view, so a long round on the phone never needs a scroll back up to close a finished box.
+
 ## v1.12.0
 
 A note under every question in a grouped round: an "Add a note" button, closed until tapped; the Send carries it as "Note on this question:" right under that question's answer.
