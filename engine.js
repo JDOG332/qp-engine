@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="1.15.0";
+var VERSION="1.16.0";
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
 var FORM="<div id=\"qp-stash\" style=\"position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none\" aria-hidden=\"true\"><form class=\"elicit\"><div class=\"elicit-header\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\"><path d=\"M11.586 2a1.5 1.5 0 0 1 1.06.44l2.914 2.914a1.5 1.5 0 0 1 .44 1.06V16.5a1.5 1.5 0 0 1-1.5 1.5h-9a1.5 1.5 0 0 1-1.492-1.347L4 16.5v-13A1.5 1.5 0 0 1 5.5 2zM5.5 3a.5.5 0 0 0-.5.5v13a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V7h-2.5A1.5 1.5 0 0 1 11 5.5V3zm7.04 10.304a.5.5 0 0 1 .92.392c-.295.69-.871 1.304-1.66 1.304-.487 0-.892-.234-1.2-.574-.309.34-.713.574-1.2.574-.486 0-.892-.233-1.2-.574-.31.34-.714.574-1.2.574a.5.5 0 0 1 0-1c.212 0 .52-.18.74-.696l.034-.067a.5.5 0 0 1 .886.067c.221.516.528.696.74.696.213 0 .52-.18.74-.696l.035-.067a.5.5 0 0 1 .885.067c.22.516.527.696.74.696s.519-.18.74-.696m0-4a.5.5 0 0 1 .92.392c-.295.69-.871 1.304-1.66 1.304-.487 0-.892-.234-1.2-.574-.309.34-.713.574-1.2.574-.486 0-.892-.233-1.2-.574-.31.34-.714.574-1.2.574a.5.5 0 0 1 0-1c.212 0 .52-.18.74-.696l.034-.067a.5.5 0 0 1 .886.067c.221.516.528.696.74.696.213 0 .52-.18.74-.696l.035-.067a.5.5 0 0 1 .885.067c.22.516.527.696.74.696s.519-.18.74-.696M12 5.5a.5.5 0 0 0 .5.5h2.293L12 3.207z\"/></svg><span>Answer details</span></div><div class=\"elicit-body\"><div class=\"elicit-group\"><label class=\"elicit-question\">Screenshots</label><div class=\"elicit-files\" data-name=\"screenshots\"><label class=\"elicit-dropzone\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\"><path d=\"M16.5 13a.5.5 0 0 1 .5.5v2a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 15.5v-2a.5.5 0 0 1 1 0v2a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 .5-.5M10 3a.5.5 0 0 1 .374.168l4 4.5.059.082a.5.5 0 0 1-.732.65l-.075-.068L10.5 4.814V13.5a.5.5 0 0 1-1 0V4.814L6.374 8.332a.5.5 0 0 1-.748-.664l4-4.5.08-.071A.5.5 0 0 1 10 3\"/></svg><span>Choose file</span><input type=\"file\" multiple></label></div><textarea class=\"elicit-textarea\" data-name=\"answers\" placeholder=\"answers\"></textarea></div></div><div class=\"elicit-footer\"><button type=\"button\" class=\"elicit-skip\">Skip</button><button type=\"button\" class=\"elicit-submit\">Send</button></div></form></div>";
@@ -28,6 +28,7 @@ var CSS=
 ".qp .in p{margin:0}.qp .in>.sep{border-top:1px solid var(--line);padding-top:8px}"+
 ".qp .in .ex{background:var(--soft)}"+
 "@media (prefers-reduced-motion:reduce){.qp .w{transition:none}}"+
+".qp .snap>.w{transition:none}.qp .qanc{position:absolute;left:0;width:1px;height:1px;pointer-events:none}.qp .qlow,.qp .qtop{flex:none;height:0}.qp,.qp *{overflow-anchor:none}"+
 ".qp .box{flex:none;width:28px;height:28px;border:2px solid var(--accent);border-radius:7px;display:inline-flex;align-items:center;justify-content:center;color:var(--on);cursor:pointer}"+
 ".qp .td.done .box{background:var(--accent)}.qp .td.done>.s .tx{color:var(--muted);text-decoration:line-through}"+
 ".qp .op{flex:none;display:flex;flex-direction:column;border:1.5px solid var(--line);border-radius:10px;background:var(--card);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:pan-y}"+
@@ -166,8 +167,29 @@ function mount(R){
 
  function kc(){var k=KC[NUM]||String(NUM+1);NUM++;return k}
  function closeSibs(d){var p=d.parentNode;if(!p)return;[].forEach.call(p.children,function(o){if(o!==d&&o.classList)o.classList.remove("open")})}
+ // v1.16.0: one idea box open at a time (Jeff, iqp1 10/29: the iPhone cuts off long cards). Opening a box closes the open one; the tapped header stays at the same spot on screen
+ try{document.documentElement.style.overflowAnchor="none";document.body.style.overflowAnchor="none"}catch(x){}
+ function seen(cb){var done=false;function fin(v){if(!done){done=true;cb(v)}}try{var io=new IntersectionObserver(function(es){io.disconnect();var e=es[es.length-1];if(!e||!e.isIntersecting){fin(null);return}var b=e.boundingClientRect,r=e.intersectionRect;fin({t:r.top-b.top,b:r.bottom-b.top,h:b.height})});io.observe(qp);setTimeout(function(){try{io.disconnect()}catch(x){}fin(null)},250)}catch(x){fin(null)}}
+ function jumpTo(y,end){var a=el("div","qanc");a.style.top=y+"px";qp.appendChild(a);try{a.scrollIntoView({block:end?"end":"start",behavior:"instant"})}catch(x){try{a.scrollIntoView(!end)}catch(z){}}qp.removeChild(a)}
+ // a closing box would shorten the card, and a chat already near its end then pulls everything down; a blank pad under Send keeps the length, and only its part on screen is kept, so it melts away as Jeff scrolls back up
+ var low=el("div","qlow"),top=null,lowIO=null;qp.appendChild(low);
+ var busy=0;function trim(){if(!low.offsetHeight&&!top)return;if(Date.now()-busy<350)return;seen(function(v){if(!v||Date.now()-busy<350)return;if(top&&v.t>=top.offsetHeight){var r0=qp.getBoundingClientRect().top;top.remove();top=null;window.scrollBy(0,qp.getBoundingClientRect().top-r0);setTimeout(trim,60);return}var lt=low.offsetTop,h=low.offsetHeight;if(h){var k=Math.max(0,Math.min(h,Math.ceil(v.b-lt)));if(k<h)low.style.height=k+"px"}})}
+ function watch(){if(lowIO)return;window.addEventListener("scroll",trim,{passive:true});try{var th=[];for(var i=0;i<=50;i++)th.push(i/50);lowIO=new IntersectionObserver(trim,{threshold:th});lowIO.observe(low)}catch(x){lowIO=1}}
+ function openIdea(d){var others=[].filter.call(qp.querySelectorAll(".ex.ihd.open"),function(x){return x!==d});if(!others.length){d.classList.add("open");return}
+  var hd=d.firstChild,big=0,se=document.documentElement,own=se.scrollHeight>innerHeight+1||window.pageYOffset>0;others.forEach(function(x){big+=x.offsetHeight});var l0=low.offsetHeight;low.style.height=(l0+big)+"px";
+  // in the chat the card's frame grows to fit after a moment; wait for it so the screen is measured right
+  var t0=Date.now();(function fit(){if(own||se.scrollHeight<=innerHeight+1||Date.now()-t0>400)seen(go);else requestAnimationFrame(fit)})();
+  busy=Date.now();setTimeout(trim,400);function go(v){busy=Date.now();var y0=hd.getBoundingClientRect().top,s0=window.pageYOffset||0;
+   others.forEach(function(x){x.classList.add("snap");x.classList.remove("open")});d.classList.add("open");var s1=window.pageYOffset||0,dy=(y0+s0)-(hd.getBoundingClientRect().top+s1);setTimeout(function(){others.forEach(function(x){x.classList.remove("snap")})},60);
+   low.style.height=(l0+Math.max(0,Math.ceil(dy)))+"px";watch();if(dy<1){trim();return}
+   if(own){var gap=s0-dy<0?Math.ceil(dy-s0):0;if(gap){if(!top){top=el("div","qtop");qp.insertBefore(top,qp.firstChild)}top.style.height=(top.offsetHeight+gap)+"px"}window.scrollBy(0,hd.getBoundingClientRect().top-y0);return}
+   if(!v||v.t<=0){try{hd.scrollIntoView({block:"nearest"})}catch(x){}return}
+   var want=v.t-dy,V=v.b-v.t,full=v.b<v.h-1;
+   if(want>=0){jumpTo(want);seen(function(w){if(w&&w.t>0&&Math.abs(w.t-want)>2)jumpTo(want+(want-w.t))})}
+   else if(full&&want+V>0){jumpTo(want+V,true);seen(function(w){if(w&&Math.abs(w.b-(want+V))>2)jumpTo(2*(want+V)-w.b,true)})}
+   else{try{hd.scrollIntoView({block:"nearest"})}catch(x){}}}}
  function drop(head,inner,cls){var d=el("div","ex"+(cls?" "+cls:"")),s=el("div","s"),w=el("div","w"),m=el("div","m");s.appendChild(head);m.appendChild(inner);w.appendChild(m);d.append(s,w);
-  s.onclick=function(e){if(e.target.closest&&e.target.closest(".box"))return;e.stopPropagation();var o=d.classList.contains("open");closeSibs(d);d.classList.toggle("open",!o);if(!o){var ta=inner.querySelector("textarea");if(ta&&cls&&cls.indexOf("qh")>=0)setTimeout(function(){try{ta.focus()}catch(x){}},160)}};return d}
+  s.onclick=function(e){if(e.target.closest&&e.target.closest(".box"))return;e.stopPropagation();var o=d.classList.contains("open");if(!o&&cls==="ihd"){openIdea(d);return}closeSibs(d);d.classList.toggle("open",!o);if(!o){var ta=inner.querySelector("textarea");if(ta&&cls&&cls.indexOf("qh")>=0)setTimeout(function(){try{ta.focus()}catch(x){}},160)}};return d}
  function body(m){var b=el("div","in");if(Array.isArray(m)){var pk=null;m.forEach(function(x){var k=x.c!=null?"c":x.s!=null?"s":"p",r=x.c!=null?cpRow(x.c):x.s!=null?exRow(x.s,x.m):rich(el("p"),x.p);if(pk&&k!==pk)r.classList.add("sep");pk=k;b.appendChild(r)})}else b.appendChild(rich(el("p"),m||""));return b}
  function exRow(s,m,cls){if(m==null){var d=el("div","ex flat"+(cls?" "+cls:"")),h=el("div","s");h.appendChild(lbl(s,"span","t"));d.appendChild(h);return d}return drop(lbl(s,"span","t"),body(m),cls)}
  function cpRow(c){var text=typeof c==="string"?c:c.text,url=/^https?:\/\/\S+$/.test((text||"").trim()),lb=url?"Copy & open":"Copy",w=el("div","cp"),pre=el("pre",null,text),b=el("button",null,lb);b.type="button";

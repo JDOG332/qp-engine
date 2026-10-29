@@ -8,6 +8,10 @@ Rounds load a fixed version through jsDelivr, for example:
 
 https://cdn.jsdelivr.net/gh/JDOG332/qp-engine@<full commit sha>/engine.js (pinned by commit; tags are not used)
 
+## v1.16.0
+
+One idea box open at a time: opening a box closes the one that was open, so a long round stays short enough for the iPhone. The tapped header stays at the same spot on screen (the chat or the page is scrolled by exactly what closed above it; a blank pad under Send, or above the card when there is nothing above it, holds the length and melts away as the screen moves off it). Answers in a closed box are kept.
+
 ## v1.13.0
 
 A "Close this box" button at the end of every idea box in a grouped round: it folds the box and brings its header back into view, so a long round on the phone never needs a scroll back up to close a finished box.
