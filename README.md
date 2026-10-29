@@ -12,6 +12,10 @@ https://cdn.jsdelivr.net/gh/JDOG332/qp-engine@<full commit sha>/engine.js (pinne
 
 A "Close this box" button at the end of every idea box in a grouped round: it folds the box and brings its header back into view, so a long round on the phone never needs a scroll back up to close a finished box.
 
+## v1.14.0
+
+No note box shows until Jeff taps: the idea's own note box hides behind an "Add a note about this idea" button, like the per-question notes (and the page note on older screen rounds).
+
 ## v1.12.0
 
 A note under every question in a grouped round: an "Add a note" button, closed until tapped; the Send carries it as "Note on this question:" right under that question's answer.
