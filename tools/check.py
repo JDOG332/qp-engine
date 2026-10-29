@@ -82,7 +82,7 @@ def check(r):
                 if not all(it.get(f) for f in ("id", "text", "a", "b")):
                     bad(w, "pair item needs id, text, a, b")
                 elif it.get("pick") not in (it.get("a"), it.get("b")):
-                    bad(w, "pair item needs a pick equal to a or b: " + it.get("text", "")[:30])
+                    bad(w, 'pair item "%s": pick must be exactly "%s" or "%s"' % (it.get("text", "")[:30], it.get("a"), it.get("b")))
         if k in ("rank", "drag") and not 2 <= len(q.get("items") or []) <= 6:
             bad(w, "needs 2 to 6 items")
         if k == "scale" and len(q.get("ends") or []) != 2:

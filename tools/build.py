@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """One command for a round: fill in defaults, drop what Jeff already answered, check, build.
 Usage: build.py qp/<round>.json --cdn ENGINE_URL [--print] [--static-form]
-       build.py --stdin --cdn ENGINE_URL <<'EOF' ... EOF   (v2.2: the round by heredoc; saves qp/<round>.json and prints the card)
+       build.py --stdin --cdn ENGINE_URL < W/<round>.json   (v2.7: the round from the file Claude wrote; saves Q/<round>.json
+       and prints the whole card to paste into show_widget, so the round is typed once)
 Writes qp/<round>.html (the card: show_widget it verbatim) and qp/<round>.file.html
 (the same round with the engine inside, the fallback file). Prints both paths.
 
@@ -13,7 +14,7 @@ The grouped page (v1.9.0, the reply format): "ideas": [{"t","line"?,"rows"?,"ste
 Shortcuts in the round data (all optional):
   screens without "kind" or "id": guessed (options=decide, items with a/b=pair, ends=scale,
     rows starting with a number keycap=todo, other rows=report); ids s1, s2, ...
-  "mem": [{"file","line","was"?}]       -> 🧠 rows on the report
+  "mem": [{"file","line","was"?,"sha"?}] -> 🧠 rows on the report (sha = the commit, shown on the row)
   "finish": {"kind":"delete"|"keep","pickup":"...","why"?} -> the end-of-chat verdict in its
     own box at the bottom: 🗑️ Safe to close & delete, or 💾 Safe to close, keep this chat
     (the same verdict goes on the chat line after "is ready"; build.py prints it)
@@ -47,6 +48,20 @@ def guess(q):
     return "report"
 
 
+def fix_pair(q):
+    """v2.8: a pair item's pick may be "a" or "b"; it becomes that button's label."""
+    if q.get("kind") == "pair":
+        items = []
+        for it in q.get("items") or []:
+            it = dict(it)
+            p = it.get("pick")
+            if p in ("a", "b") and p not in (it.get("a"), it.get("b")):
+                it["pick"] = it.get(p)
+            items.append(it)
+        q["items"] = items
+    return q
+
+
 def answered_titles(adir):
     seen = set()
     for path in glob.glob(os.path.join(adir, "*.txt")):
@@ -67,13 +82,19 @@ def code_q(q):
     return {"id": q.get("id"), "kind": "decide", "code": True, "q": q["q"], "options": opts, "rows": q.get("rows")}
 
 
+def mem_title(m):
+    """v2.7: the 🧠 row's line names the file and, when given, the commit sha."""
+    return "\U0001F9E0 %s %s%s" % ("Updated" if m.get("was") else "Added to", m["file"],
+                                   (" \u00b7 " + str(m["sha"])) if m.get("sha") else "")
+
+
 def mem_rows(mems):
     rows = []
     for m in mems or []:
         inner = [{"c": m["line"]}]
         if m.get("was"):
             inner.append({"p": "Was: " + m["was"]})
-        rows.append({"s": "\U0001F9E0 %s %s" % ("Updated" if m.get("was") else "Added to", m["file"]), "m": inner})
+        rows.append({"s": mem_title(m), "m": inner})
     return rows
 
 
@@ -90,6 +111,7 @@ def expand_ideas(r, seen):
             if q.get("kind") == "code":
                 q = code_q(q)
             q["kind"] = guess(q)
+            fix_pair(q)
             if q.get("q", "").strip() in seen:
                 dropped.append(q["q"])
                 continue
@@ -117,6 +139,7 @@ def expand(r, adir):
         if q.get("kind") == "code":
             q = code_q(q)
         q["kind"] = guess(q)
+        fix_pair(q)
         if q["kind"] not in ("report", "todo") and re.sub(r"^Q: ", "", q.get("q", "").replace("\U0001F510 ", "")).strip() in seen:
             dropped.append(q["q"])
             continue
@@ -132,7 +155,7 @@ def expand(r, adir):
             inner = [{"c": m["line"]}]
             if m.get("was"):
                 inner.append({"p": "Was: " + m["was"]})
-            rows.append({"s": "\U0001F9E0 %s %s" % ("Updated" if m.get("was") else "Added to", m["file"]), "m": inner})
+            rows.append({"s": mem_title(m), "m": inner})
         report["rows"] = rows
     fin = r.get("finish")
     verdict = None
@@ -218,12 +241,10 @@ def main(argv):
     print("fallback: " + fbmsg)
     if verdict:
         print("chat line ends: · " + verdict)
-    if "--print" in argv:
+    if "--print" in argv or "--stdin" in argv:
+        # v2.7: the whole card, round inside, so the round JSON is typed once (in the file) and this is pasted as is
         print("==== card (paste into show_widget verbatim) ====")
         print(card)
-    elif "--stdin" in argv:
-        print("card wrapper (v2.3): paste this, with the round JSON in place of ROUND, into show_widget; the engine adds the font and the form itself")
-        print(html(dict(r, ideas=None) if False else {"round": r["round"], "ideas": "ROUND"}, '<script src="%s"></script>' % cdn if cdn else "").replace('{"round":"%s","ideas":"ROUND"}' % r["round"], "ROUND"))
     return 0
 
 
