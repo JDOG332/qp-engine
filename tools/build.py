@@ -91,6 +91,25 @@ def mem_title(m):
                                    (" \u00b7 " + str(m["sha"])) if m.get("sha") else "")
 
 
+def _empty_m(m):
+    return m is None or (isinstance(m, str) and not m.strip()) or (isinstance(m, list) and not m)
+
+
+def tidy_rows(rows):
+    """v2.0.1: a row or step whose m is empty loses the m, so it draws flat instead of failing the check."""
+    out = []
+    for x in rows or []:
+        if isinstance(x, dict):
+            x = dict(x)
+            if "m" in x:
+                if _empty_m(x["m"]):
+                    x.pop("m")
+                elif isinstance(x["m"], list):
+                    x["m"] = tidy_rows(x["m"])
+        out.append(x)
+    return out
+
+
 def mem_rows(mems):
     rows = []
     for m in mems or []:
@@ -107,7 +126,9 @@ def expand_ideas(r, seen):
     ideas, dropped, n = [], [], 0
     for I in r.get("ideas") or []:
         I = dict(I)
-        rows = list(I.get("rows") or []) + mem_rows(I.pop("mem", None))
+        rows = tidy_rows(I.get("rows")) + mem_rows(I.pop("mem", None))
+        if I.get("steps") is not None:
+            I["steps"] = tidy_rows(I["steps"])
         asks = []
         for q in I.get("asks") or []:
             q = dict(q)
@@ -126,6 +147,10 @@ def expand_ideas(r, seen):
                 q["id"] = "q%d" % n
             if q.get("rows") is None:
                 q.pop("rows", None)
+            else:
+                q["rows"] = tidy_rows(q["rows"])
+            else:
+                q["rows"] = tidy_rows(q["rows"])
             asks.append(q)
         I["rows"], I["asks"] = rows, asks
         if rows or asks or I.get("steps"):
@@ -157,7 +182,7 @@ def expand(r, adir):
         report = {"kind": "report", "rows": []}
         out.insert(0, report)
     if report is not None:
-        rows = list(report.get("rows") or [])
+        rows = tidy_rows(report.get("rows"))
         for m in r.get("mem") or []:
             inner = [{"c": m["line"]}]
             if m.get("was"):
