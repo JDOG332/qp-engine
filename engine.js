@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="2.0.8";
+var VERSION="2.0.9";
 // v2.0.1: a row or step whose m is empty ("" or []) loses the m in prep, so it draws flat instead of failing the round as "row with an empty dropdown"; a step with no m draws flat (no arrow), like a row.
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
@@ -311,7 +311,7 @@ function mount(R){
  qp.addEventListener("dragleave",function(e){if(!qp.contains(e.relatedTarget))qp.classList.remove("drop")});
  qp.addEventListener("drop",function(e){if(!canShot)return;e.preventDefault();qp.classList.remove("drop");var fs=e.dataTransfer&&e.dataTransfer.files;if(!fs||!fs.length)return;var h=e.target.closest&&e.target.closest(".qh"),id="_page";if(h){var s=h.closest(".sec");(R.screens||[]).forEach(function(q){if(q._sec===s)id=q.id})}addShots(id,fs);var w=h?h.querySelector(".in"):pn.querySelector(".in");if(w&&w._mark)w._mark()});
  [].forEach.call(ct.querySelectorAll(".sec"),function(s,i){var q=(R.screens||[])[i];if(q)q._sec=s});
- if(R.ideas&&R.layout!=="boxes"){qp._NT=NT;qp._fit=R.fit||"";screensMode(qp,ct)}
+ if(R.ideas&&R.layout!=="boxes"){qp._NT=NT;qp._fit=R.fit||"";qp._drop=R.drop||"grow";screensMode(qp,ct)}
 
 
 }
@@ -352,6 +352,30 @@ function mkBar(s,n){var b0=s.querySelector(":scope > .ex.ihd .in > .nbar");if(!b
  t.addEventListener("input",function(){NTm[key]=t.value;t.style.height="46px";t.style.height=Math.min(150,Math.max(46,t.scrollHeight))+"px";t.style.overflowY=t.scrollHeight>150?"auto":"hidden";setTimeout(fit,20)});bar.appendChild(t);
  var c=document.createElement("button");c.type="button";c.className="clip";c.textContent="📎";c.setAttribute("aria-label","Add a screenshot");
  c.onclick=function(e){e.stopPropagation();if(/iPhone|iPad/.test(navigator.userAgent)){var h=bar.parentNode;if(h&&!h.querySelector(".cliptip")){var tip=document.createElement("div");tip.className="cliptip";tip.style.cssText="font-size:16px;opacity:.75";tip.textContent="On the iPhone, paste screenshots into the chat box after Submit.";h.appendChild(tip);setTimeout(fit,50)}return}if(c0)c0.click()};bar.appendChild(c);return bar}
+// v2.0.9 drill: a tapped row, step or button arrow opens its detail as its own screen, the same height as the card, with Close at the bottom; a detail too long for one screen splits into pages 1/2, 2/2; nothing scrolls inside
+var DET=null;
+function drill(e){if(qp._drop!=="drill"||DET)return;var t=e.target;if(!t.closest)return;var src=null,w=null,title="";
+ var hs=t.closest(".ex:not(.ihd):not(.flat)>.s");if(hs&&!t.closest(".qdet")){src=hs.parentNode;w=src.querySelector(":scope>.w");var tx=hs.querySelector(".t")||hs;title=tx.textContent}
+ var mo=t.closest(".op .mo");if(mo){src=mo.closest(".op");w=src.querySelector(":scope>.w");title=(src.querySelector(".lb")||src).textContent}
+ if(!src||!w||!w.firstChild)return;e.stopPropagation();e.preventDefault();openDet(w,title)}
+ct.addEventListener("click",drill,true);
+function openDet(w,title){var cur=S.filter(function(x){return x.style.display!=="none"})[0];var room=parseInt(box.style.minHeight)||400;
+ var P=document.createElement("div");P.className="qdet sec";P.style.cssText="display:flex;flex-direction:column;gap:8px;min-height:"+room+"px;box-sizing:border-box";
+ var h=document.createElement("div");h.className="qdh";h.style.cssText="font-weight:700;padding:6px 8px 0";h.textContent=title.trim();
+ var c=document.createElement("div");c.className="qdc";c.style.cssText="flex:1;display:flex;flex-direction:column;gap:6px;padding:0 8px";
+ var kids=[].slice.call(w.childNodes);kids.forEach(function(k){c.appendChild(k)});
+ var f=document.createElement("div");f.className="qnav";
+ P.append(h,c,f);if(cur)cur.style.display="none";nav.style.display="none";box.appendChild(P);DET={P:P,w:w,kids:kids,cur:cur};
+ // units: the body's own parts; a plain paragraph taller than a screen splits by sentence
+ var body=c.querySelector(".in")||c;var avail=function(){return room-h.offsetHeight-58-24};
+ [].slice.call(body.children).forEach(function(u){if(u.tagName==="P"&&!u.children.length&&u.offsetHeight>avail()){var ss=u.textContent.match(/[^.!?]+[.!?]+["')]*\s*|[^.!?]+$/g)||[u.textContent];var cur2=document.createElement("p");body.insertBefore(cur2,u);ss.forEach(function(x){cur2.textContent+=x;if(cur2.offsetHeight>avail()&&cur2.textContent.length>x.length){cur2.textContent=cur2.textContent.slice(0,-x.length);cur2=document.createElement("p");cur2.textContent=x;body.insertBefore(cur2,u)}});u.remove()}});
+ var units=[].slice.call(body.children),pages=[[]],acc=0;units.forEach(function(u){var hh=u.offsetHeight+6;if(acc+hh>avail()&&pages[pages.length-1].length){pages.push([]);acc=0}pages[pages.length-1].push(u);acc+=hh});
+ var k=0;function page(n){k=n;units.forEach(function(u){u.style.display="none"});pages[k].forEach(function(u){u.style.display=""});f.innerHTML="";
+  var b1=document.createElement("button");b1.type="button";b1.textContent=k?"Back":"Close";b1.onclick=function(e){e.stopPropagation();if(k)page(k-1);else closeDet()};f.appendChild(b1);
+  var lab=document.createElement("div");lab.className="qdots";lab.textContent=pages.length>1?(k+1)+" / "+pages.length:"";f.appendChild(lab);
+  if(k<pages.length-1){var b2=document.createElement("button");b2.type="button";b2.textContent="More";b2.onclick=function(e){e.stopPropagation();page(k+1)};f.appendChild(b2)}else{var sp=document.createElement("div");sp.style.cssText="flex:0 0 24%";f.appendChild(sp)}}
+ page(0)}
+function closeDet(){if(!DET)return;var d=DET;DET=null;[].forEach.call(d.P.querySelectorAll(".qdc *"),function(u){if(u.style)u.style.display=""});d.kids.forEach(function(k){d.w.appendChild(k)});d.P.remove();if(d.cur)d.cur.style.display="";nav.style.display="";fit()}
 function SPLIT(){var probe=S[0];S.forEach(function(s){s.style.display="none"});probe.style.display="";var b0=box.style.minHeight;box.style.minHeight="0px";var dn=document.createElement("div");dn.style.height="0px";ct.insertBefore(dn,box);nav.style.minHeight="46px";var chrome=qp.offsetHeight-box.offsetHeight;dn.remove();var room=CARD-chrome;probe.style.display="none";
  var out=[];S.forEach(function(s){var parts=[s];var cur=s;cur.style.display="";var guard=0;
   while(cur.offsetHeight>room&&guard++<400){var inn=cur.querySelector(":scope > .ex.ihd .in");var units=[];var SK=function(c){return c.classList.contains("icl")||c.classList.contains("nbar")||c.classList.contains("qnb")||c.classList.contains("qdiag")||c.style.display==="none"};/* v2.0.7: a screen holding one question that is too tall splits that question by its parts too */var solo=[].filter.call(inn.children,function(c){return !SK(c)}).length<2;[].forEach.call(inn.children,function(c){if(SK(c))return;if(!c.className&&c.children.length>1||c.classList.contains("st")||c.classList.contains("ak")&&c.children.length>2&&(solo||c.offsetHeight>room*0.8))[].forEach.call(c.children,function(x){units.push(x)});else units.push(c)});
@@ -365,7 +389,7 @@ function SPLIT(){var probe=S[0];S.forEach(function(s){s.style.display="none"});p
 function START(){SPLIT();var dots=document.createElement("div");dots.className="qdots";/* v2.0.8: the screen numbers sit between Back and Next on one row, so the nav takes one row (Jeff 10/30) */nav.appendChild(dots);S.forEach(function(s,k){var b=document.createElement("button");b.type="button";b.textContent=String(k+1);b.onclick=function(e){e.stopPropagation();show(k)};dots.appendChild(b)});
 var diagT=null;[].forEach.call(qp.querySelectorAll("textarea.tx"),function(t){if(/fills in by itself/i.test(t.placeholder||"")){var a=t.closest(".ak");if(a)a.classList.add("qdiag");diagT=t}});
 var i=0;function btn(t,c,f){var b=document.createElement("button");b.type="button";b.textContent=t;if(c)b.className=c;b.onclick=function(e){e.stopPropagation();f()};nav.appendChild(b)}
-fit=function(){[].forEach.call(box.querySelectorAll(".nbar"),function(x){x.style.marginTop=""});box.style.minHeight="0px";var chrome=qp.offsetHeight-box.offsetHeight,m=Math.max(0,CARD-chrome);box.style.minHeight=m+"px";/* v2.0.5: the screen area never grows past the card; an opened dropdown that runs long scrolls inside its screen as a last resort */box.style.maxHeight=m+"px";box.style.overflowY="auto";/* v2.0.3: the note bar sits at the bottom of every screen, right above Back and Next (Jeff 10/30) */var cs=S[i],cb=cs&&cs.querySelector(".nbar");if(cb){var gp=m-cs.offsetHeight;if(gp>0)cb.style.marginTop=(4+gp)+"px"}var HS=S.map(function(s){var o=s.style.display;s.style.display="";var h=s.offsetHeight;s.style.display=o;return h});if(diagT){diagT.value="scr "+screen.width+"x"+screen.height+" vh"+innerHeight+" card"+qp.offsetHeight+" screens "+HS.join(",")+" room "+box.style.minHeight+" over "+HS.filter(function(h){return h>parseInt(box.style.minHeight)}).length+" ua "+(/iPhone/.test(navigator.userAgent)?"iPhone":/Mac/.test(navigator.userAgent)?"Mac":"other");diagT.dispatchEvent(new Event("input"))}}
+fit=function(){[].forEach.call(box.querySelectorAll(".nbar"),function(x){x.style.marginTop=""});box.style.minHeight="0px";var chrome=qp.offsetHeight-box.offsetHeight,m=Math.max(0,CARD-chrome);box.style.minHeight=m+"px";/* v2.0.9: nothing ever scrolls inside the card (an inner scroller traps the iPhone: v1.8.0 and v2.0.5); "grow": an open dropdown makes the card taller and the chat scrolls it; "drill": a dropdown opens as its own screen *//* v2.0.3: the note bar sits at the bottom of every screen, right above Back and Next (Jeff 10/30) */var cs=S[i],cb=cs&&cs.querySelector(".nbar");if(cb){var gp=m-cs.offsetHeight;if(gp>0)cb.style.marginTop=(4+gp)+"px"}var HS=S.map(function(s){var o=s.style.display;s.style.display="";var h=s.offsetHeight;s.style.display=o;return h});if(diagT){diagT.value="scr "+screen.width+"x"+screen.height+" vh"+innerHeight+" card"+qp.offsetHeight+" screens "+HS.join(",")+" room "+box.style.minHeight+" over "+HS.filter(function(h){return h>parseInt(box.style.minHeight)}).length+" ua "+(/iPhone/.test(navigator.userAgent)?"iPhone":/Mac/.test(navigator.userAgent)?"Mac":"other");diagT.dispatchEvent(new Event("input"))}}
 function show(n){i=(n+S.length)%S.length;S.forEach(function(s,k){s.style.display=k===i?"":"none"});[].forEach.call(dots.children,function(b,k){b.classList.toggle("on",k===i)});
 nav.innerHTML="";nav.className="qnav"+(i===S.length-1?" last":"");btn("Back","",function(){show(i-1)});nav.appendChild(dots);if(i===S.length-1)btn("Submit all","sub",function(){if(send)send.click()});else btn("Next","",function(){show(i+1)});[].forEach.call(dots.children,function(b){b.style.display=""});if(dots.scrollWidth>dots.clientWidth+1)[].forEach.call(dots.children,function(b,k){if(Math.abs(k-i)>1&&k!==0&&k!==S.length-1)b.style.display="none"});if(dots.scrollWidth>dots.clientWidth+1)[].forEach.call(dots.children,function(b,k){if(k!==i)b.style.display="none"});fit()}
 show(0);setTimeout(fit,300);document.addEventListener("click",function(){setTimeout(fit,250)},true)}
