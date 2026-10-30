@@ -149,8 +149,6 @@ def expand_ideas(r, seen):
                 q.pop("rows", None)
             else:
                 q["rows"] = tidy_rows(q["rows"])
-            else:
-                q["rows"] = tidy_rows(q["rows"])
             asks.append(q)
         I["rows"], I["asks"] = rows, asks
         if rows or asks or I.get("steps"):
