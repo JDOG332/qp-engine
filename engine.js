@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="2.0.13";
+var VERSION="2.0.14";
 // v2.0.1: a row or step whose m is empty ("" or []) loses the m in prep, so it draws flat instead of failing the round as "row with an empty dropdown"; a step with no m draws flat (no arrow), like a row.
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
@@ -311,7 +311,7 @@ function mount(R){
  qp.addEventListener("dragleave",function(e){if(!qp.contains(e.relatedTarget))qp.classList.remove("drop")});
  qp.addEventListener("drop",function(e){if(!canShot)return;e.preventDefault();qp.classList.remove("drop");var fs=e.dataTransfer&&e.dataTransfer.files;if(!fs||!fs.length)return;var h=e.target.closest&&e.target.closest(".qh"),id="_page";if(h){var s=h.closest(".sec");(R.screens||[]).forEach(function(q){if(q._sec===s)id=q.id})}addShots(id,fs);var w=h?h.querySelector(".in"):pn.querySelector(".in");if(w&&w._mark)w._mark()});
  [].forEach.call(ct.querySelectorAll(".sec"),function(s,i){var q=(R.screens||[])[i];if(q)q._sec=s});
- if(R.ideas&&R.layout!=="boxes"){qp._NT=NT;qp._fit=R.fit||"";qp._drop=R.drop||"focus";screensMode(qp,ct)}
+ if(R.ideas&&R.layout!=="boxes"){qp._NT=NT;qp._fit=R.fit||"";qp._drop=R.drop||"focus";qp._stream=R.stream!==false;screensMode(qp,ct)}
 
 
 }
@@ -379,19 +379,31 @@ function closeDet(){if(!DET)return;var d=DET;DET=null;[].forEach.call(d.P.queryS
 // v2.0.10 focus: one tap opens a dropdown in place; if the screen would run past the card, the other items on that screen tuck away so the open one has the room; one more tap on it brings them back; the card keeps its height and nothing scrolls inside; only a detail taller than the whole screen still grows the card
 function fxItems(cur){var inn=cur.querySelector(":scope > .ex.ihd .in"),items=[];if(!inn)return{inn:null,items:items};
  [].forEach.call(inn.children,function(c){if(!c.classList||c.classList.contains("nbar")||c.classList.contains("qnb")||c.classList.contains("icl")||c.classList.contains("qfhint")||c.style.display==="none")return;if(!c.className||c.classList.contains("st"))[].forEach.call(c.children,function(x){if(!x.classList.contains("qfhint"))items.push(x)});else items.push(c)});return{inn:inn,items:items}}
-function wheelList(items){return items.filter(function(x){return x.classList&&x.classList.contains("ex")&&!x.classList.contains("flat")&&x.querySelector(":scope>.w")})}
-// v2.0.13 the wheel (Jeff 10/30: "click the same exact spot every time... cycling through"): tapping the open row again opens the next one in the same spot, the rows above sliding shut; after the last one the list comes back; a faint "2 of 6" sits above the note bar
-function wheel(e){if(qp._drop!=="focus")return;var t=e.target;if(!t.closest||t.closest(".box")||t.closest(".qfhint"))return;var hs=t.closest(".ex:not(.ihd):not(.flat)>.s");if(!hs)return;var ex=hs.parentNode;if(!ex.classList.contains("open"))return;
- var cur=S.filter(function(x){return x.style.display!=="none"})[0];if(!cur||!cur.contains(ex))return;var L=wheelList(fxItems(cur).items),k=L.indexOf(ex);if(k<0)return;
- e.stopPropagation();e.preventDefault();ex.classList.remove("open");if(k+1<L.length)L[k+1].classList.add("open")}
+function wheelList(items){return items.filter(function(x){return x.classList&&(x.classList.contains("ex")&&!x.classList.contains("flat")&&x.querySelector(":scope>.w")||x.classList.contains("ak")&&!x.classList.contains("qdiag"))})}
+// v2.0.14 the stream (Jeff 10/30: "just tap, tap, tap... every section where I needed to respond would pop up when I got to that section"): one tap spot walks every row, step and question across all topics; a question shows in that spot, and picking an answer moves on by itself; past the last one Submit all shows
+function curIx(){return qp._ix?qp._ix():0}
+function stopOn(x,on){if(x.classList.contains("ak"))x.classList.toggle("qcur",on);else x.classList.toggle("open",on)}
+function advance(cur,x){var L=wheelList(fxItems(cur).items),k=L.indexOf(x);stopOn(x,false);
+ if(k+1<L.length){stopOn(L[k+1],true);return}
+ if(qp._stream&&qp._show){var n=curIx();if(n<S.length-1){[].forEach.call(cur.querySelectorAll(".qfh"),function(y){y.classList.remove("qfh");y.style.maxHeight=""});[].forEach.call(cur.querySelectorAll(".qfhint"),function(y){y.remove()});qp._show(n+1);var c2=S[n+1],L2=wheelList(fxItems(c2).items);if(L2.length)stopOn(L2[0],true)}}}
+function wheel(e){if(qp._drop!=="focus")return;var t=e.target;if(!t.closest||t.closest(".box")||t.closest(".qfhint"))return;
+ var cur=S.filter(function(x){return x.style.display!=="none"})[0];if(!cur)return;
+ var hs=t.closest(".ex:not(.ihd):not(.flat)>.s"),aq=t.closest(".ak.qcur"),x=null;if(aq&&t.closest(".op,.pr,button,textarea,input,select,[role=button],.cp,.ex:not(.ihd),.nbar"))aq=null;
+ if(hs&&hs.parentNode.classList.contains("open"))x=hs.parentNode;else if(aq)x=aq;
+ if(!x||!cur.contains(x))return;if(wheelList(fxItems(cur).items).indexOf(x)<0)return;e.stopPropagation();e.preventDefault();advance(cur,x)}
 ct.addEventListener("click",wheel,true);
+// an answer picked on the current question moves on by itself
+ct.addEventListener("click",function(e){if(!qp._stream)return;var t=e.target;if(!t.closest||t.closest(".mo"))return;var ow=t.closest(".w");if(ow&&ow.closest(".op"))return;var ak=t.closest(".ak.qcur");if(!ak)return;
+ var single=t.closest(".op")&&!ak.querySelector(".cap"),pr=t.closest(".pr");if(!single&&!pr)return;
+ setTimeout(function(){var done=single?!!ak.querySelector('.op[aria-pressed="true"]'):[].every.call(ak.querySelectorAll(".pr"),function(r){return !!r.querySelector('button[aria-pressed="true"]')});
+  if(!done||!ak.classList.contains("qcur"))return;setTimeout(function(){var cur=S.filter(function(x){return x.style.display!=="none"})[0];if(cur&&ak.classList.contains("qcur")){advance(cur,ak);focusFix();fit();setTimeout(fit,280)}},380)},0)},true);
 function focusFix(){if(qp._drop!=="focus")return;var cur=S.filter(function(x){return x.style.display!=="none"})[0];if(!cur)return;
- var room=parseInt(box.style.minHeight)||0;var open=cur.querySelector(".ex.open:not(.ihd),.op.open");
+ var room=parseInt(box.style.minHeight)||0;var open=cur.querySelector(".ex.open:not(.ihd),.ak.qcur,.op.open");if(open&&open.classList.contains("op")&&open.closest(".ak.qcur"))open=open.closest(".ak.qcur");
  cur.classList.add("qfnow");var was=[].slice.call(cur.querySelectorAll(".qfh"));was.forEach(function(x){x.classList.remove("qfh");x.style.maxHeight=""});[].forEach.call(cur.querySelectorAll(".qfhint"),function(x){x.remove()});
  var F=fxItems(cur),inn=F.inn,items=F.items,keep=[],H=items.map(function(x){return x.offsetHeight});
  var o=-1;if(open)items.forEach(function(x,k){if(x===open||x.contains(open))o=k});
- if(open&&room&&o>=0){var isRow=open.classList.contains("ex");var L=wheelList(items),n=L.indexOf(open);
-  var hu=null;if(isRow&&n>=0){hu=document.createElement("div");hu.className="qfhint";hu.textContent=(n+1)+" of "+L.length+(n+1<L.length?" · tap it again for the next":" · tap it again to close");hu.onclick=function(e){e.stopPropagation();open.classList.remove("open");focusFix();setTimeout(fit,300)};inn.insertBefore(hu,inn.querySelector(":scope > .nbar")||null)}
+ if(open&&room&&o>=0){var isRow=open.classList.contains("ex")||open.classList.contains("ak");var L=wheelList(items),n=L.indexOf(open);var before=0,total=0;S.forEach(function(sx,si){var c=wheelList(fxItems(sx).items).length;total+=c;if(si<curIx())before+=c});
+  var hu=null;if(isRow&&n>=0){hu=document.createElement("div");hu.className="qfhint";var last=before+n+1>=total;hu.textContent=(before+n+1)+" of "+total+(open.classList.contains("ak")?" \u00b7 answer, or tap the question":last?" \u00b7 tap it again to finish":" \u00b7 tap it again for the next");hu.onclick=function(e){e.stopPropagation();stopOn(open,false);focusFix();setTimeout(fit,300)};inn.insertBefore(hu,inn.querySelector(":scope > .nbar")||null)}
   var full=cur.offsetHeight,excess=full-room,acc=0;
   if(isRow){for(var k=0;k<o;k++){keep.push(items[k]);acc+=H[k]+5}}
   if(full-acc>room||!isRow){var order=[];if(!isRow)for(var k1=0;k1<o;k1++)order.push(k1);for(var k2=items.length-1;k2>o+1;k2--)order.push(k2);for(var q=0;q<order.length&&acc<excess;q++){keep.push(items[order[q]]);acc+=H[order[q]]+5}}}
@@ -399,7 +411,7 @@ function focusFix(){if(qp._drop!=="focus")return;var cur=S.filter(function(x){re
  keep.forEach(function(x){if(was.indexOf(x)>=0)return;x.style.maxHeight=x.offsetHeight+"px";void x.offsetHeight;x.classList.add("qfh")});
  was.forEach(function(x){if(keep.indexOf(x)>=0)return;var ix=items.indexOf(x),h=ix>=0?H[ix]:0;x.style.maxHeight="0px";x.classList.remove("qfh");void x.offsetHeight;x.style.maxHeight=(h||x.scrollHeight)+"px";setTimeout(function(){if(!x.classList.contains("qfh"))x.style.maxHeight=""},260)})}
 ct.addEventListener("click",function(){setTimeout(function(){focusFix();fit();setTimeout(fit,280)},0)},true);
-(function(){var st2=document.createElement("style");st2.textContent=".qp .qfh{max-height:0!important;opacity:0;overflow:hidden;padding-top:0!important;padding-bottom:0!important;margin-top:-5px!important;border-width:0!important;pointer-events:none}.qp .qfh,.qp .ex:not(.ihd),.qp .ak{transition:max-height .22s ease,opacity .18s ease,margin .22s ease,padding .22s ease}.qp .qfnow,.qp .qfnow *{transition:none!important}@keyframes qfin{from{opacity:0}to{opacity:.6}}.qp .qfhint{animation:qfin .25s ease}.qp .qfhint{font-size:15px!important;opacity:.6;text-align:center;padding:4px 0;cursor:pointer}";document.head.appendChild(st2)})();
+(function(){var st2=document.createElement("style");st2.textContent=".qp .qfh{max-height:0!important;opacity:0;overflow:hidden;padding-top:0!important;padding-bottom:0!important;margin-top:-5px!important;border-width:0!important;pointer-events:none}.qp .qfh,.qp .ex:not(.ihd),.qp .ak{transition:max-height .22s ease,opacity .18s ease,margin .22s ease,padding .22s ease}.qp .qfnow,.qp .qfnow *{transition:none!important}@keyframes qfin{from{opacity:0}to{opacity:.6}}.qp .qfhint{animation:qfin .25s ease}.qp .ak.qcur>.aq{cursor:pointer}.qp .qnav.strm{min-height:46px}.qp .qnav.strm .qdots{flex:1 1 auto}.qp .qfhint{font-size:15px!important;opacity:.6;text-align:center;padding:4px 0;cursor:pointer}";document.head.appendChild(st2)})();
 function SPLIT(){var probe=S[0];S.forEach(function(s){s.style.display="none"});probe.style.display="";var b0=box.style.minHeight;box.style.minHeight="0px";var dn=document.createElement("div");dn.style.height="0px";ct.insertBefore(dn,box);nav.style.minHeight="46px";var chrome=qp.offsetHeight-box.offsetHeight;dn.remove();var room=CARD-chrome;probe.style.display="none";
  var out=[];S.forEach(function(s){var parts=[s];var cur=s;cur.style.display="";var guard=0;
   while(cur.offsetHeight>room&&guard++<400){var inn=cur.querySelector(":scope > .ex.ihd .in");var units=[];var SK=function(c){return c.classList.contains("icl")||c.classList.contains("nbar")||c.classList.contains("qnb")||c.classList.contains("qdiag")||c.style.display==="none"};/* v2.0.7: a screen holding one question that is too tall splits that question by its parts too */var solo=[].filter.call(inn.children,function(c){return !SK(c)}).length<2;[].forEach.call(inn.children,function(c){if(SK(c))return;if(!c.className&&c.children.length>1||c.classList.contains("st")||c.classList.contains("ak")&&c.children.length>2&&(solo||c.offsetHeight>room*0.8))[].forEach.call(c.children,function(x){units.push(x)});else units.push(c)});
@@ -415,8 +427,8 @@ var diagT=null;[].forEach.call(qp.querySelectorAll("textarea.tx"),function(t){if
 var i=0;function btn(t,c,f){var b=document.createElement("button");b.type="button";b.textContent=t;if(c)b.className=c;b.onclick=function(e){e.stopPropagation();f()};nav.appendChild(b)}
 fit=function(){[].forEach.call(box.querySelectorAll(".nbar"),function(x){x.style.marginTop=""});box.style.minHeight="0px";var chrome=qp.offsetHeight-box.offsetHeight,m=Math.max(0,CARD-chrome);box.style.minHeight=m+"px";/* v2.0.9: nothing ever scrolls inside the card (an inner scroller traps the iPhone: v1.8.0 and v2.0.5); "grow": an open dropdown makes the card taller and the chat scrolls it; "drill": a dropdown opens as its own screen *//* v2.0.3: the note bar sits at the bottom of every screen, right above Back and Next (Jeff 10/30) */var cs=S[i],cb=cs&&cs.querySelector(".nbar");if(cb){var gp=m-cs.offsetHeight;if(gp>0)cb.style.marginTop=(4+gp)+"px"}var HS=S.map(function(s){var o=s.style.display;s.style.display="";var h=s.offsetHeight;s.style.display=o;return h});if(diagT){diagT.value="scr "+screen.width+"x"+screen.height+" vh"+innerHeight+" card"+qp.offsetHeight+" screens "+HS.join(",")+" room "+box.style.minHeight+" over "+HS.filter(function(h){return h>parseInt(box.style.minHeight)}).length+" ua "+(/iPhone/.test(navigator.userAgent)?"iPhone":/Mac/.test(navigator.userAgent)?"Mac":"other");diagT.dispatchEvent(new Event("input"))}}
 function show(n){i=(n+S.length)%S.length;S.forEach(function(s,k){s.style.display=k===i?"":"none"});[].forEach.call(dots.children,function(b,k){b.classList.toggle("on",k===i)});
-nav.innerHTML="";nav.className="qnav"+(i===S.length-1?" last":"");btn("Back","",function(){show(i-1)});nav.appendChild(dots);if(i===S.length-1)btn("Submit all","sub",function(){if(send)send.click()});else btn("Next","",function(){show(i+1)});[].forEach.call(dots.children,function(b){b.style.display=""});if(dots.scrollWidth>dots.clientWidth+1)[].forEach.call(dots.children,function(b,k){if(Math.abs(k-i)>1&&k!==0&&k!==S.length-1)b.style.display="none"});if(dots.scrollWidth>dots.clientWidth+1)[].forEach.call(dots.children,function(b,k){if(k!==i)b.style.display="none"});fit()}
-show(0);setTimeout(fit,300);document.addEventListener("click",function(){setTimeout(fit,250)},true)}
+nav.innerHTML="";nav.className="qnav"+(i===S.length-1?" last":"")+(qp._stream?" strm":"");if(qp._stream){nav.appendChild(dots);if(i===S.length-1)btn("Submit all","sub",function(){if(send)send.click()})}else{btn("Back","",function(){show(i-1)});nav.appendChild(dots);if(i===S.length-1)btn("Submit all","sub",function(){if(send)send.click()});else btn("Next","",function(){show(i+1)})}[].forEach.call(dots.children,function(b){b.style.display=""});if(dots.scrollWidth>dots.clientWidth+1)[].forEach.call(dots.children,function(b,k){if(Math.abs(k-i)>1&&k!==0&&k!==S.length-1)b.style.display="none"});if(dots.scrollWidth>dots.clientWidth+1)[].forEach.call(dots.children,function(b,k){if(k!==i)b.style.display="none"});fit()}
+qp._show=show;qp._ix=function(){return i};show(0);setTimeout(fit,300);document.addEventListener("click",function(){setTimeout(fit,250)},true)}
 var started=false;function go(){if(started)return;started=true;START()}try{document.fonts.ready.then(go)}catch(x){}setTimeout(go,1200)}
 
 window.QP={mount:mount,prep:prep,check:check,version:VERSION};
