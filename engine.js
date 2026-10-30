@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="2.0.12";
+var VERSION="2.0.13";
 // v2.0.1: a row or step whose m is empty ("" or []) loses the m in prep, so it draws flat instead of failing the round as "row with an empty dropdown"; a step with no m draws flat (no arrow), like a row.
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
@@ -377,23 +377,27 @@ function openDet(w,title){var cur=S.filter(function(x){return x.style.display!==
  page(0)}
 function closeDet(){if(!DET)return;var d=DET;DET=null;[].forEach.call(d.P.querySelectorAll(".qdc *"),function(u){if(u.style)u.style.display=""});d.kids.forEach(function(k){d.w.appendChild(k)});d.P.remove();if(d.cur)d.cur.style.display="";nav.style.display="";fit()}
 // v2.0.10 focus: one tap opens a dropdown in place; if the screen would run past the card, the other items on that screen tuck away so the open one has the room; one more tap on it brings them back; the card keeps its height and nothing scrolls inside; only a detail taller than the whole screen still grows the card
+function fxItems(cur){var inn=cur.querySelector(":scope > .ex.ihd .in"),items=[];if(!inn)return{inn:null,items:items};
+ [].forEach.call(inn.children,function(c){if(!c.classList||c.classList.contains("nbar")||c.classList.contains("qnb")||c.classList.contains("icl")||c.classList.contains("qfhint")||c.style.display==="none")return;if(!c.className||c.classList.contains("st"))[].forEach.call(c.children,function(x){if(!x.classList.contains("qfhint"))items.push(x)});else items.push(c)});return{inn:inn,items:items}}
+function wheelList(items){return items.filter(function(x){return x.classList&&x.classList.contains("ex")&&!x.classList.contains("flat")&&x.querySelector(":scope>.w")})}
+// v2.0.13 the wheel (Jeff 10/30: "click the same exact spot every time... cycling through"): tapping the open row again opens the next one in the same spot, the rows above sliding shut; after the last one the list comes back; a faint "2 of 6" sits above the note bar
+function wheel(e){if(qp._drop!=="focus")return;var t=e.target;if(!t.closest||t.closest(".box")||t.closest(".qfhint"))return;var hs=t.closest(".ex:not(.ihd):not(.flat)>.s");if(!hs)return;var ex=hs.parentNode;if(!ex.classList.contains("open"))return;
+ var cur=S.filter(function(x){return x.style.display!=="none"})[0];if(!cur||!cur.contains(ex))return;var L=wheelList(fxItems(cur).items),k=L.indexOf(ex);if(k<0)return;
+ e.stopPropagation();e.preventDefault();ex.classList.remove("open");if(k+1<L.length)L[k+1].classList.add("open")}
+ct.addEventListener("click",wheel,true);
 function focusFix(){if(qp._drop!=="focus")return;var cur=S.filter(function(x){return x.style.display!=="none"})[0];if(!cur)return;
- // v2.0.12: the accordion moves smoothly (Jeff 10/30: "still feels slightly clunky"): it decides from the finished layout, then tucked items slide shut or open instead of snapping, and the hint line fades in; the next item always stays in view
  var room=parseInt(box.style.minHeight)||0;var open=cur.querySelector(".ex.open:not(.ihd),.op.open");
  cur.classList.add("qfnow");var was=[].slice.call(cur.querySelectorAll(".qfh"));was.forEach(function(x){x.classList.remove("qfh");x.style.maxHeight=""});[].forEach.call(cur.querySelectorAll(".qfhint"),function(x){x.remove()});
- var full=cur.offsetHeight,keep=[],H=[],items=[];
- if(open&&room&&full>room){var inn=cur.querySelector(":scope > .ex.ihd .in");
-  [].forEach.call(inn.children,function(c){if(!c.classList||c.classList.contains("nbar")||c.classList.contains("qnb")||c.classList.contains("icl")||c.style.display==="none")return;if(!c.className||c.classList.contains("st"))[].forEach.call(c.children,function(x){items.push(x)});else items.push(c)});
-  var o=-1;items.forEach(function(x,k){if(x===open||x.contains(open))o=k});
-  if(o>=0){var order=[];for(var k=0;k<o;k++)order.push(k);for(var k2=items.length-1;k2>o+1;k2--)order.push(k2);
-   H=items.map(function(x){return x.offsetHeight});var excess=full-room+30,acc=0,up=0,down=0;
-   for(var q=0;q<order.length&&acc<excess;q++){var k3=order[q];keep.push(items[k3]);acc+=H[k3]+5;if(k3<o)up++;else down++}
-   var parts=[];if(up)parts.push("↑ "+up+" above");if(down)parts.push("↓ "+down+" below");
-   if(parts.length){var hu=document.createElement("div");hu.className="qfhint";hu.textContent=parts.join(" · ");hu.onclick=function(e){e.stopPropagation();open.classList.remove("open");focusFix();setTimeout(fit,300)};items[0].parentNode.insertBefore(hu,items[0])}}}
- // back to the state on screen before this tap, still without animating, then animate only the changes
+ var F=fxItems(cur),inn=F.inn,items=F.items,keep=[],H=items.map(function(x){return x.offsetHeight});
+ var o=-1;if(open)items.forEach(function(x,k){if(x===open||x.contains(open))o=k});
+ if(open&&room&&o>=0){var isRow=open.classList.contains("ex");var L=wheelList(items),n=L.indexOf(open);
+  var hu=null;if(isRow&&n>=0){hu=document.createElement("div");hu.className="qfhint";hu.textContent=(n+1)+" of "+L.length+(n+1<L.length?" · tap it again for the next":" · tap it again to close");hu.onclick=function(e){e.stopPropagation();open.classList.remove("open");focusFix();setTimeout(fit,300)};inn.insertBefore(hu,inn.querySelector(":scope > .nbar")||null)}
+  var full=cur.offsetHeight,excess=full-room,acc=0;
+  if(isRow){for(var k=0;k<o;k++){keep.push(items[k]);acc+=H[k]+5}}
+  if(full-acc>room||!isRow){var order=[];if(!isRow)for(var k1=0;k1<o;k1++)order.push(k1);for(var k2=items.length-1;k2>o+1;k2--)order.push(k2);for(var q=0;q<order.length&&acc<excess;q++){keep.push(items[order[q]]);acc+=H[order[q]]+5}}}
  was.forEach(function(x){x.classList.add("qfh")});void cur.offsetHeight;cur.classList.remove("qfnow");void cur.offsetHeight;
  keep.forEach(function(x){if(was.indexOf(x)>=0)return;x.style.maxHeight=x.offsetHeight+"px";void x.offsetHeight;x.classList.add("qfh")});
- was.forEach(function(x){if(keep.indexOf(x)>=0)return;var h=items.length&&items.indexOf(x)>=0?H[items.indexOf(x)]:0;x.style.maxHeight="0px";x.classList.remove("qfh");void x.offsetHeight;x.style.maxHeight=(h||x.scrollHeight)+"px";setTimeout(function(){if(!x.classList.contains("qfh"))x.style.maxHeight=""},260)})}
+ was.forEach(function(x){if(keep.indexOf(x)>=0)return;var ix=items.indexOf(x),h=ix>=0?H[ix]:0;x.style.maxHeight="0px";x.classList.remove("qfh");void x.offsetHeight;x.style.maxHeight=(h||x.scrollHeight)+"px";setTimeout(function(){if(!x.classList.contains("qfh"))x.style.maxHeight=""},260)})}
 ct.addEventListener("click",function(){setTimeout(function(){focusFix();fit();setTimeout(fit,280)},0)},true);
 (function(){var st2=document.createElement("style");st2.textContent=".qp .qfh{max-height:0!important;opacity:0;overflow:hidden;padding-top:0!important;padding-bottom:0!important;margin-top:-5px!important;border-width:0!important;pointer-events:none}.qp .qfh,.qp .ex:not(.ihd),.qp .ak{transition:max-height .22s ease,opacity .18s ease,margin .22s ease,padding .22s ease}.qp .qfnow,.qp .qfnow *{transition:none!important}@keyframes qfin{from{opacity:0}to{opacity:.6}}.qp .qfhint{animation:qfin .25s ease}.qp .qfhint{font-size:15px!important;opacity:.6;text-align:center;padding:4px 0;cursor:pointer}";document.head.appendChild(st2)})();
 function SPLIT(){var probe=S[0];S.forEach(function(s){s.style.display="none"});probe.style.display="";var b0=box.style.minHeight;box.style.minHeight="0px";var dn=document.createElement("div");dn.style.height="0px";ct.insertBefore(dn,box);nav.style.minHeight="46px";var chrome=qp.offsetHeight-box.offsetHeight;dn.remove();var room=CARD-chrome;probe.style.display="none";
