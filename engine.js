@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="3.0.4";
+var VERSION="3.0.5";
 // v2.0.1: a row or step whose m is empty ("" or []) loses the m in prep, so it draws flat instead of failing the round as "row with an empty dropdown"; a step with no m draws flat (no arrow), like a row.
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
@@ -465,7 +465,7 @@ secs.forEach(function(sx,k){var ihd=sx.querySelector(":scope > .ex.ihd"),inner=i
   if(g&&g.textContent.trim()){var gp=document.createElement("p");gp.textContent=g.textContent;detail(c,gp)}
   var ino=inner&&inner.querySelector(":scope > .inote");bar(c,ino?ino.querySelector(".qnb textarea"):null,(t?t.textContent:"")+" (title)",ino?ino.querySelector(".qnb .at"):null)}
  var root=inner||sx;[].slice.call(root.children).forEach(function(ch){if(!ch.classList||ch.classList.contains("inote")||ch.classList.contains("icl"))return;
-  if(ch.classList.contains("ak")){var c=card("ask",k);c.appendChild(ch);bar(c,ch.querySelector(".qnb textarea"),"",ch.querySelector(".qnb .at"));return}
+  if(ch.classList.contains("ak")){var c=card("ask",k);if(ch.querySelector(".cap"))ch.setAttribute("data-multi","1");c.appendChild(ch);bar(c,ch.querySelector(".qnb textarea"),"",ch.querySelector(".qnb .at"));return}
   if(ch.classList.contains("ex")&&!ch.classList.contains("ihd")){rowCard(ch,k);return}
   if(!ch.className||ch.classList.contains("st"))[].slice.call(ch.children).forEach(function(x){if(x.classList&&x.classList.contains("ex"))rowCard(x,k)})});
  sx.style.display="none"});
@@ -492,7 +492,7 @@ function split(){for(var ci=0;ci<C.length;ci++){var c=C[ci],guard=0;c.style.disp
  groups.forEach(function(g){if(g.length<2)return;g.forEach(function(c,j){var h=c.querySelector(":scope>.hl")||c.querySelector(":scope>.ak>.aq");if(h){var sp=document.createElement("span");sp.style.cssText="font-weight:400;opacity:.6;margin-left:6px;font-size:17px";sp.textContent=(j+1)+"/"+g.length;h.appendChild(sp)}})})}
 // a picked answer moves on by itself
 box.addEventListener("click",function(e){var t=e.target;if(!t.closest||t.closest(".mo"))return;var ow=t.closest(".w");if(ow&&ow.closest(".op"))return;var ak=t.closest(".ak");if(!ak)return;
- var single=t.closest(".op")&&!ak.querySelector(".cap"),pr=t.closest(".pr");if(!single&&!pr)return;var me=i;
+ var single=t.closest(".op")&&!ak.querySelector(".cap")&&!ak.hasAttribute("data-multi"),pr=t.closest(".pr");if(!single&&!pr)return;var me=i;
  setTimeout(function(){var done=single?!!ak.querySelector('.op[aria-pressed="true"]'):[].every.call(ak.querySelectorAll(".pr"),function(r){return !!r.querySelector('button[aria-pressed="true"]')});if(done)setTimeout(function(){if(i===me&&i<C.length-1)show(i+1)},380)},0)},true);
 document.addEventListener("keydown",function(e){var tg=e.target&&e.target.tagName;if(tg==="TEXTAREA"||tg==="INPUT")return;if(e.key==="ArrowRight"){e.preventDefault();show(i+1)}else if(e.key==="ArrowLeft"){e.preventDefault();show(i-1)}});
 qp._cards=C;qp._show=show;
