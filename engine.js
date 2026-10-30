@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="2.0.3";
+var VERSION="2.0.4";
 // v2.0.1: a row or step whose m is empty ("" or []) loses the m in prep, so it draws flat instead of failing the round as "row with an empty dropdown"; a step with no m draws flat (no arrow), like a row.
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
@@ -283,7 +283,7 @@ function mount(R){
  var sb=el("button","send","Send ↗");sb.type="button";ct.appendChild(sb);ct.appendChild(el("div")).style.cssText="flex:none;height:8px";
  function nAnswered(){var n=0;(R.ideas||[]).forEach(function(I){(I.asks||[]).forEach(function(q){var a=A[q.id];if(a&&typeof a==="object"){if(Object.keys(a).some(function(k){return a[k]}))n++}else if(a)n++})});(R.screens||[]).forEach(function(q){var a=A[q.id];if(q.kind==="report")return;if(a&&typeof a==="object"){if(Object.keys(a).some(function(k){return a[k]}))n++}else if(a)n++});return n}
  function transcript(extra){var L=["answers in · "+R.round+" · v"+VERSION+" · "+innerWidth+"w"+(R.file?" · from file":""),""],shotList=[];
-  (R.ideas||[]).forEach(function(I,k){L.push(I._n+" "+I.t);if((I.steps||[]).length)L.push("Steps: "+I.steps.map(function(x,j){return x.s+": "+(A["_st"+k][x.id||String(j)]?"done":"not done")}).join("; "));(I.asks||[]).forEach(function(q){var a=A[q.id];if(q.kind==="pair")a=q.items.map(function(it){return it.text+": "+(A[q.id][it.id]||"(skipped)")}).join("; ");L.push((q.code?"🔐 ":"Q: ")+q.q);L.push("Answer: "+(a||"(skipped)"));var qn=(NT[q.id]||"").trim();if(qn)L.push("Note on this question: "+qn);var qs=SH[q.id]||[];if(qs.length){L.push("Screenshots: "+qs.length);shotList=shotList.concat(qs)}});var nt=(NT["_i"+k]||"").trim();if(nt)L.push("Note: "+nt);var s=SH["_i"+k]||[];if(s.length){L.push("Screenshots: "+s.length);shotList=shotList.concat(s)}L.push("")});
+  (R.ideas||[]).forEach(function(I,k){L.push(I._n+" "+I.t);if((I.steps||[]).length)L.push("Steps: "+I.steps.map(function(x,j){return x.s+": "+(A["_st"+k][x.id||String(j)]?"done":"not done")}).join("; "));(I.asks||[]).forEach(function(q){var a=A[q.id];if(q.kind==="pair")a=q.items.map(function(it){return it.text+": "+(A[q.id][it.id]||"(skipped)")}).join("; ");L.push((q.code?"🔐 ":"Q: ")+q.q);L.push("Answer: "+(a||"(skipped)"));var qn=(NT[q.id]||"").trim();if(qn)L.push("Note on this question: "+qn);var qs=SH[q.id]||[];if(qs.length){L.push("Screenshots: "+qs.length);shotList=shotList.concat(qs)}});var nt=(NT["_i"+k]||"").trim();if(nt)L.push("Note: "+nt);Object.keys(NT).filter(function(x){return x.indexOf("_p"+k+"_")===0}).sort().forEach(function(x){var v=(NT[x]||"").trim();if(v)L.push("Note on screen "+x.split("_")[2]+": "+v)});var s=SH["_i"+k]||[];if(s.length){L.push("Screenshots: "+s.length);shotList=shotList.concat(s)}L.push("")});
   (R.screens||[]).forEach(function(q){if(q.kind==="report")return;
    if(q.kind==="todo"){L.push("Steps");L.push("Answer: "+q.rows.map(function(x,k){return x._n+" "+x._t+": "+(A[q.id][x.id||String(k)]?"done":"not done")}).join("; "));L.push("");return}
    var a=A[q.id];if(q.kind==="pair")a=q.items.map(function(it){return it.text+": "+(A[q.id][it.id]||"(skipped)")}).join("; ");
@@ -304,13 +304,13 @@ function mount(R){
  qp.addEventListener("dragleave",function(e){if(!qp.contains(e.relatedTarget))qp.classList.remove("drop")});
  qp.addEventListener("drop",function(e){if(!canShot)return;e.preventDefault();qp.classList.remove("drop");var fs=e.dataTransfer&&e.dataTransfer.files;if(!fs||!fs.length)return;var h=e.target.closest&&e.target.closest(".qh"),id="_page";if(h){var s=h.closest(".sec");(R.screens||[]).forEach(function(q){if(q._sec===s)id=q.id})}addShots(id,fs);var w=h?h.querySelector(".in"):pn.querySelector(".in");if(w&&w._mark)w._mark()});
  [].forEach.call(ct.querySelectorAll(".sec"),function(s,i){var q=(R.screens||[])[i];if(q)q._sec=s});
- if(R.ideas&&R.layout!=="boxes")screensMode(qp,ct);
+ if(R.ideas&&R.layout!=="boxes"){qp._NT=NT;qp._fit=R.fit||"";screensMode(qp,ct)}
 
 
 }
 // v2.0.0: one screen per idea (Jeff, iqp8 to iqp14, 10/29): Back and Next, a faint number bar to jump, one note bar per screen, Submit all answers on the last screen; every card 680 tall on the iPhone and the Mac; a topic too tall moves its last items onto its own next screen (1/2, 2/2). layout:"boxes" in a round keeps the v1.16 boxes.
 function screensMode(qp,ct){var CARD=680;var fit=function(){};
-var S=[].filter.call(ct.children,function(x){return x.querySelector&&x.querySelector(":scope > .ex.ihd")});if(!S.length)return;
+var S=[].filter.call(ct.children,function(x){return x.querySelector&&x.querySelector(":scope > .ex.ihd")});if(!S.length)return;S.forEach(function(x,k){x._k=k});
 var send=ct.querySelector(".send");if(send)send.style.display="none";qp.classList.add("scr");
 var st=document.createElement("style");st.textContent=
 ".qp .icl{display:none!important}.qp .ex.ihd>.s{pointer-events:none}.qp .ex.ihd>.s::after{content:''!important}"+
@@ -322,7 +322,15 @@ var st=document.createElement("style");st.textContent=
 ".qp .ak{gap:5px!important}.qp .op .row{min-height:40px!important;padding:0!important}.qp .op .lb{padding:5px 12px!important}.qp .op .mo{width:34px;height:32px;margin:3px 6px 3px 0}"+
 ".qp .nbar~.qnb .at,.qp .nbar~.qnb textarea{display:none}.qp .nbar~.qnb{display:block!important}.qp .nbar{display:flex;gap:8px;margin-top:4px;align-items:stretch}.qp .nbar .qn{display:none!important}.qp .nbar textarea.nt{flex:1;min-width:0;min-height:46px;height:46px;resize:none;overflow:hidden;max-height:150px;box-sizing:border-box;padding:10px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;line-height:1.3}.qp .nbar .clip{flex:none;width:56px;min-height:46px;max-height:46px;align-self:flex-end;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;cursor:pointer}"+
 ".qp .qnav{display:flex;gap:8px}.qp .qnav button{flex:1;min-height:46px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;cursor:pointer}.qp .qnav button{flex:1 1 0;white-space:nowrap;padding:0 6px}.qp .qnav.last button{flex:0 0 24%}.qp .qnav.last button.sub{flex:1 1 0;font-weight:700;background:var(--ink);border-color:var(--ink);color:var(--bg)}";
-document.head.appendChild(st);S.forEach(function(s){var inn=s.querySelector(":scope > .ex.ihd .in");if(!inn)return;var qs=[].slice.call(inn.querySelectorAll(".qn")),keep=qs[0];if(!keep)return;qs.slice(1).forEach(function(b){b.style.display="none"});
+document.head.appendChild(st);
+var FIT={wrap:".qp .ex:not(.ihd)>.s>.t>.tx,.qp .il{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}",
+ clamp2:".qp .ex:not(.ihd)>.s>.t>.tx,.qp .il{white-space:normal!important;overflow:hidden!important;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical}",
+ tap:".qp .ex.open>.s>.t>.tx,.qp .ex.full>.s>.t>.tx{white-space:normal!important;overflow:visible!important}.qp .ex.cut>.s>.t>.tx::after{content:''}"};
+if(FIT[qp._fit]){var fs=document.createElement("style");fs.textContent=FIT[qp._fit];document.head.appendChild(fs)}
+if(qp._fit==="tap")ct.addEventListener("click",function(e){var x=e.target.closest&&e.target.closest(".ex.flat");if(x&&!x.classList.contains("ihd")){x.classList.toggle("full");setTimeout(fit,30)}});
+if(qp._fit==="shrink")[].forEach.call(ct.querySelectorAll(".ex:not(.ihd)>.s>.t>.tx,.il"),function(t){var f=19.5;var vis=[];var p=t;while(p&&p!==ct){if(p.style&&p.style.display==="none"){vis.push(p);p.style.display=""}p=p.parentNode}
+ while(t.scrollWidth>t.clientWidth+1&&f>15){f-=0.5;t.style.setProperty("font-size",f+"px","important")}vis.forEach(function(v){v.style.display="none"})});
+S.forEach(function(s){var inn=s.querySelector(":scope > .ex.ihd .in");if(!inn)return;var qs=[].slice.call(inn.querySelectorAll(".qn")),keep=qs[0];if(!keep)return;qs.slice(1).forEach(function(b){b.style.display="none"});
  var nb=keep.nextElementSibling&&keep.nextElementSibling.classList.contains("qnb")?keep.nextElementSibling:null;var host=keep.parentNode;
  var bar=document.createElement("div");bar.className="nbar";var clip=document.createElement("button");clip.type="button";clip.className="clip";clip.textContent="📎";clip.setAttribute("aria-label","Add a screenshot");
  var ta=nb&&nb.querySelector("textarea");if(ta){ta.classList.add("nt");ta.placeholder="Add a note";ta.rows=1;var grow=function(){ta.style.height="46px";ta.style.height=Math.min(150,Math.max(46,ta.scrollHeight))+"px";ta.style.overflowY=ta.scrollHeight>150?"auto":"hidden";setTimeout(fit,20)};ta.addEventListener("input",grow);bar.append(keep,ta,clip)}else bar.append(keep,clip);inn.appendChild(bar);if(nb)inn.appendChild(nb);if(host.classList&&host.classList.contains("inote")&&!host.children.length)host.style.display="none";
@@ -331,18 +339,17 @@ var box=document.createElement("div");ct.insertBefore(box,S[0]);S.forEach(functi
 [].forEach.call(ct.querySelectorAll(":scope > .sec"),function(x){var last=S[S.length-1].querySelector(":scope > .ex.ihd .in");if(last)last.insertBefore(x,last.querySelector(":scope > .nbar"))});
 var nav=document.createElement("div");nav.className="qnav";ct.insertBefore(nav,send||null);
 // auto split: a screen taller than the room moves its last items onto a new screen right after it, titled 1/2, 2/2
-// v2.0.2: every screen gets a note bar, split screens included (Jeff 10/30: "a note option on every single page"); each part's note is joined into the idea's one note, tagged (1/2), (2/2)
-function mkBar(s){var b0=s.querySelector(":scope > .ex.ihd .in > .nbar");if(!b0)return null;var ta0=b0.querySelector("textarea.nt"),c0=b0.querySelector(".clip");
- if(!s._px){s._px=[];if(ta0){var p1=proxy(s,ta0);p1.value=ta0.value;ta0.style.display="none";b0.insertBefore(p1,ta0)}}
- var bar=document.createElement("div");bar.className="nbar";if(ta0)bar.appendChild(proxy(s,ta0));var c=document.createElement("button");c.type="button";c.className="clip";c.textContent="📎";c.setAttribute("aria-label","Add a screenshot");
+// v2.0.4: every screen gets its own note bar; a split topic's later screens keep their own notes ("Note on screen 2: ..."), never joined into one box, so nothing repeats (Jeff 10/30, iqp3)
+function mkBar(s,n){var b0=s.querySelector(":scope > .ex.ihd .in > .nbar");if(!b0)return null;var c0=b0.querySelector(".clip"),NTm=qp._NT||{},key="_p"+s._k+"_"+n;
+ var bar=document.createElement("div");bar.className="nbar";var t=document.createElement("textarea");t.className="nt";t.rows=1;t.placeholder="Add a note";
+ t.addEventListener("input",function(){NTm[key]=t.value;t.style.height="46px";t.style.height=Math.min(150,Math.max(46,t.scrollHeight))+"px";t.style.overflowY=t.scrollHeight>150?"auto":"hidden";setTimeout(fit,20)});bar.appendChild(t);
+ var c=document.createElement("button");c.type="button";c.className="clip";c.textContent="📎";c.setAttribute("aria-label","Add a screenshot");
  c.onclick=function(e){e.stopPropagation();if(/iPhone|iPad/.test(navigator.userAgent)){var h=bar.parentNode;if(h&&!h.querySelector(".cliptip")){var tip=document.createElement("div");tip.className="cliptip";tip.style.cssText="font-size:16px;opacity:.75";tip.textContent="On the iPhone, paste screenshots into the chat box after Submit.";h.appendChild(tip);setTimeout(fit,50)}return}if(c0)c0.click()};bar.appendChild(c);return bar}
-function proxy(s,ta0){var t=document.createElement("textarea");t.className="nt";t.rows=1;t.placeholder="Add a note";s._px.push(t);
- t.addEventListener("input",function(){t.style.height="46px";t.style.height=Math.min(150,Math.max(46,t.scrollHeight))+"px";t.style.overflowY=t.scrollHeight>150?"auto":"hidden";var n=s._px.length;ta0.value=s._px.map(function(x,k){var v=x.value.trim();return v?(n>1?"("+(k+1)+"/"+n+") ":"")+v:""}).filter(Boolean).join("\n");ta0.dispatchEvent(new Event("input"));setTimeout(fit,20)});return t}
 function SPLIT(){var probe=S[0];S.forEach(function(s){s.style.display="none"});probe.style.display="";var b0=box.style.minHeight;box.style.minHeight="0px";var dn=document.createElement("div");dn.style.height="20px";ct.insertBefore(dn,box);nav.style.minHeight="46px";var chrome=qp.offsetHeight-box.offsetHeight;dn.remove();var room=CARD-chrome;probe.style.display="none";
  var out=[];S.forEach(function(s){var parts=[s];var cur=s;cur.style.display="";var guard=0;
-  while(cur.offsetHeight>room&&guard++<400){var inn=cur.querySelector(":scope > .ex.ihd .in");var units=[];[].forEach.call(inn.children,function(c){if(c.classList.contains("icl")||c.classList.contains("nbar")||c.classList.contains("qnb")||c.classList.contains("qdiag")||c.style.display==="none")return;if(!c.className&&c.children.length>1||c.classList.contains("st"))[].forEach.call(c.children,function(x){units.push(x)});else units.push(c)});
+  while(cur.offsetHeight>room&&guard++<400){var inn=cur.querySelector(":scope > .ex.ihd .in");var units=[];[].forEach.call(inn.children,function(c){if(c.classList.contains("icl")||c.classList.contains("nbar")||c.classList.contains("qnb")||c.classList.contains("qdiag")||c.style.display==="none")return;if(!c.className&&c.children.length>1||c.classList.contains("st")||c.classList.contains("ak")&&c.children.length>2&&c.offsetHeight>room*0.8)[].forEach.call(c.children,function(x){units.push(x)});else units.push(c)});
    if(units.length<2)break;var nx=cur._next||null;
-   if(!nx){nx=cur.cloneNode(true);var ni=nx.querySelector(":scope > .ex.ihd .in");while(ni.firstChild)ni.removeChild(ni.firstChild);var xb=mkBar(s);if(xb)ni.appendChild(xb);cur._next=nx;nx._orig=s;parts.push(nx);cur.parentNode.insertBefore(nx,cur.nextSibling);nx.style.display="none"}
+   if(!nx){nx=cur.cloneNode(true);var ni=nx.querySelector(":scope > .ex.ihd .in");while(ni.firstChild)ni.removeChild(ni.firstChild);var xb=mkBar(s,parts.length+1);if(xb)ni.appendChild(xb);cur._next=nx;nx._orig=s;parts.push(nx);cur.parentNode.insertBefore(nx,cur.nextSibling);nx.style.display="none"}
    var u=units[units.length-1],grp=u.parentNode===inn?null:u.parentNode,ni2=nx.querySelector(":scope > .ex.ihd .in");
    if(grp){var g2=ni2.firstChild&&ni2.firstChild._src===grp?ni2.firstChild:null;if(!g2){g2=grp.cloneNode(false);g2._src=grp;ni2.insertBefore(g2,ni2.firstChild)}g2.insertBefore(u,g2.firstChild)}else ni2.insertBefore(u,ni2.firstChild);
    if(cur.offsetHeight<=room){cur.style.display="none";cur=nx;cur.style.display=""}}
