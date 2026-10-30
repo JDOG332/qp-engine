@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="2.0.5";
+var VERSION="2.0.6";
 // v2.0.1: a row or step whose m is empty ("" or []) loses the m in prep, so it draws flat instead of failing the round as "row with an empty dropdown"; a step with no m draws flat (no arrow), like a row.
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
@@ -99,19 +99,26 @@ var KEYCAP_RX="[1-9]️?⃣";
 function guessKind(q){if(q.kind)return q.kind;if("options" in q)return "decide";if("ends" in q)return "scale";if(q.items&&q.items.length&&typeof q.items[0]==="object"&&q.items[0])return "pair";var rows=q.rows||[];if(rows.length&&new RegExp("^"+KEYCAP_RX).test(rows[0].s||""))return "todo";return "report"}
 function fixPair(q){if(q.kind==="pair"){q.items=(q.items||[]).map(function(it){it=Object.assign({},it);var p=it.pick;if((p==="a"||p==="b")&&p!==it.a&&p!==it.b)it.pick=it[p];return it})}return q}
 function codeQ(q){var o=[{label:"Not yet",more:q.wait||"Nothing changes."},{label:"🔐 Approve "+q.code+": "+q.action,more:q.more||q.action}];var r={id:q.id,kind:"decide",code:true,q:q.q,options:o};if(q.rows!=null)r.rows=q.rows;return r}
-function memRows(ms){return(ms||[]).map(function(m){var inner=[{c:m.line}];if(m.was)inner.push({p:"Was: "+m.was});return{s:"🧠 "+(m.was?"Updated":"Added to")+" "+m.file+(m.sha?" · "+m.sha:""),m:inner}})}
+function memRows(ms){return(ms||[]).map(function(m){var inner=[{p:(m.was?"Updated ":"Added to ")+m.file},{c:m.line}];if(m.was)inner.push({p:"Was: "+m.was});var b=String(m.file||"").split("/").pop().replace(/\.md$/,"");return{s:"🧠 "+b+(m.sha?" "+m.sha:""),m:inner}})}
 function emptyM(m){return m==null||(typeof m==="string"&&!m.trim())||(Array.isArray(m)&&!m.length)}
 function tidyRows(rows){return(rows||[]).map(function(x){if(x==null||typeof x!=="object")return x;x=Object.assign({},x);if("m" in x){if(emptyM(x.m))delete x.m;else if(Array.isArray(x.m))x.m=tidyRows(x.m)}return x})}
 function prepQ(q){q=Object.assign({},q);if(q.rows!=null)q.rows=tidyRows(q.rows);if(q.kind==="code")q=codeQ(q);if(q.kind==="multi"){q.kind="decide";q.multi=true}q.kind=guessKind(q);fixPair(q);return q}
-function prep(R){if(R._prepped)return R;R=Object.assign({},R);var n=0;
+// v2.0.6: the hard cap (Jeff 10/30): every top line (row, step, 🧠 row, answer button) is 30 characters or less after its emoji; a longer one is cut at a word and its whole text opens its dropdown, so nothing is lost and no page fails; the Send header counts them ("over 30: N") so Claude sees each miss
+var CAP=30,OVER=0;
+function cut(t,c){var w=String(t).split(" "),o="";for(var i=0;i<w.length;i++){var nx=o?o+" "+w[i]:w[i];if(Array.from(nx).length>c)break;o=nx}var SW=/^(the|a|an|to|of|and|or|for|in|on|at|with|by|from|then|but|so|is|are|was|be|its|it|this|that)$/i,ws=o.split(" ");while(ws.length>2&&SW.test(ws[ws.length-1]))ws.pop();o=ws.join(" ").replace(/[,;:\-\u2013]+$/,"");return o||Array.from(String(t)).slice(0,c).join("")}
+function withFull(full,m){var f={p:full};if(m==null)return full;if(Array.isArray(m))return [f].concat(m);return [f,{p:m}]}
+function capRow(x,emo){if(!x||typeof x!=="object"||typeof x.s!=="string")return x;var s=x.s,e="",t=s;if(emo){var k=s.indexOf(" ");if(k>0&&k<6){e=s.slice(0,k+1);t=s.slice(k+1)}}
+ if(Array.from(t).length<=CAP)return x;OVER++;x=Object.assign({},x);x.s=e+cut(t,CAP);x.m=withFull(t,x.m);return x}
+function capOpts(q){if(q.code||!q.options)return q;q.options=q.options.map(function(o){if(!o||Array.from(String(o.label||"")).length<=CAP)return o;OVER++;o=Object.assign({},o);var full=o.label;o.label=cut(full,CAP);o.more=withFull(full,o.more);return o});return q}
+function prep(R){if(R._prepped)return R;R=Object.assign({},R);var n=0;OVER=0;
  if(R.ideas!=null){R.ideas=R.ideas.map(function(I){I=Object.assign({},I);var rows=tidyRows(I.rows).concat(memRows(I.mem));delete I.mem;if(I.steps!=null)I.steps=tidyRows(I.steps);
-  var asks=(I.asks||[]).map(function(q){q=prepQ(q);n++;if(!q.id)q.id="q"+n;if(q.rows==null)delete q.rows;return q});I.rows=rows;I.asks=asks;return I}).filter(function(I){return I.rows.length||I.asks.length||(I.steps||[]).length})}
+  var asks=(I.asks||[]).map(function(q){q=capOpts(prepQ(q));n++;if(!q.id)q.id="q"+n;if(q.rows==null)delete q.rows;return q});I.rows=rows.map(function(x){return capRow(x,true)});if(I.steps)I.steps=I.steps.map(function(x){return capRow(x,false)});I.asks=asks;return I}).filter(function(I){return I.rows.length||I.asks.length||(I.steps||[]).length})}
  var out=[],report=null;(R.screens||[]).forEach(function(q){q=prepQ(q);if(q.kind==="report"&&!report)report=q;out.push(q)});
  if(!report&&R.ideas==null&&R.mem){report={kind:"report",rows:[]};out.unshift(report)}
  if(report){report.rows=tidyRows(report.rows).concat(memRows(R.mem))}
  var f=R.finish;if(f)R._finish=true;if(f){var v,inner;if(f.kind==="delete"){v="🗑️ Safe to close & delete";inner=[{p:"Pickup point: "+(f.pickup||"nothing to pick up")}]}else{v="💾 Safe to close, keep this chat";inner=[{p:f.why||f.pickup||"Worth keeping to look back at."}]}out.push({kind:"report",rows:[{s:v,m:inner}]})}
  out.forEach(function(q,i){if(!q.id)q.id="s"+(i+1);if(q.rows==null)delete q.rows});
- ["mem","title","finish","theme"].forEach(function(k){delete R[k]});R.screens=out;R._prepped=true;return R}
+ ["mem","title","finish","theme"].forEach(function(k){delete R[k]});R.screens=out;R._over=OVER;R._prepped=true;return R}
 var KINDS=["report","todo","decide","do","pair","rank","drag","scale","date","number","text"],QKINDS=KINDS.slice(2);
 var EMO_CK=new RegExp("^(?:"+KEYCAP_RX+"|[^\\p{L}\\p{N}_\\s]\\S*)\\s+\\S","u");
 function rowsOk(rows,w,bad,emoji){(rows||[]).forEach(function(x){if(!("p" in x||"c" in x||"s" in x))bad(w,"row needs p, c or s");
@@ -282,7 +289,7 @@ function mount(R){
  if(R.after){ct.appendChild(rich(el("p","after"),R.after))}
  var sb=el("button","send","Send ↗");sb.type="button";ct.appendChild(sb);ct.appendChild(el("div")).style.cssText="flex:none;height:8px";
  function nAnswered(){var n=0;(R.ideas||[]).forEach(function(I){(I.asks||[]).forEach(function(q){var a=A[q.id];if(a&&typeof a==="object"){if(Object.keys(a).some(function(k){return a[k]}))n++}else if(a)n++})});(R.screens||[]).forEach(function(q){var a=A[q.id];if(q.kind==="report")return;if(a&&typeof a==="object"){if(Object.keys(a).some(function(k){return a[k]}))n++}else if(a)n++});return n}
- function transcript(extra){var L=["answers in · "+R.round+" · v"+VERSION+" · "+innerWidth+"w"+(R.file?" · from file":""),""],shotList=[];
+ function transcript(extra){var L=["answers in · "+R.round+" · v"+VERSION+" · "+innerWidth+"w"+(R.file?" · from file":"")+(R._over?" · over 30: "+R._over:""),""],shotList=[];
   (R.ideas||[]).forEach(function(I,k){L.push(I._n+" "+I.t);if((I.steps||[]).length)L.push("Steps: "+I.steps.map(function(x,j){return x.s+": "+(A["_st"+k][x.id||String(j)]?"done":"not done")}).join("; "));(I.asks||[]).forEach(function(q){var a=A[q.id];if(q.kind==="pair")a=q.items.map(function(it){return it.text+": "+(A[q.id][it.id]||"(skipped)")}).join("; ");L.push((q.code?"🔐 ":"Q: ")+q.q);L.push("Answer: "+(a||"(skipped)"));var qn=(NT[q.id]||"").trim();if(qn)L.push("Note on this question: "+qn);var qs=SH[q.id]||[];if(qs.length){L.push("Screenshots: "+qs.length);shotList=shotList.concat(qs)}});var nt=(NT["_i"+k]||"").trim();if(nt)L.push("Note: "+nt);Object.keys(NT).filter(function(x){return x.indexOf("_p"+k+"_")===0}).sort().forEach(function(x){var v=(NT[x]||"").trim();if(v)L.push("Note on screen "+x.split("_")[2]+": "+v)});var s=SH["_i"+k]||[];if(s.length){L.push("Screenshots: "+s.length);shotList=shotList.concat(s)}L.push("")});
   (R.screens||[]).forEach(function(q){if(q.kind==="report")return;
    if(q.kind==="todo"){L.push("Steps");L.push("Answer: "+q.rows.map(function(x,k){return x._n+" "+x._t+": "+(A[q.id][x.id||String(k)]?"done":"not done")}).join("; "));L.push("");return}
@@ -326,7 +333,7 @@ document.head.appendChild(st);
 var FIT={wrap:".qp .ex:not(.ihd)>.s>.t>.tx,.qp .il{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}",
  clamp2:".qp .ex:not(.ihd)>.s>.t>.tx,.qp .il{white-space:normal!important;overflow:hidden!important;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical}",
  tap:".qp .ex.open>.s>.t>.tx,.qp .ex.full>.s>.t>.tx{white-space:normal!important;overflow:visible!important}.qp .ex.cut>.s>.t>.tx::after{content:''}"};
-/* v2.0.5: two lines, then ... is the default (Jeff picked option C on his iPhone, 10/30) */var FM=qp._fit||"clamp2";if(FIT[FM]){var fs=document.createElement("style");fs.textContent=FIT[FM];document.head.appendChild(fs)}
+/* v2.0.5: two lines, then ... is the default (Jeff picked option C on his iPhone, 10/30) */var FM=qp._fit||"wrap";if(FIT[FM]){var fs=document.createElement("style");fs.textContent=FIT[FM];document.head.appendChild(fs)}
 if(qp._fit==="tap")ct.addEventListener("click",function(e){var x=e.target.closest&&e.target.closest(".ex.flat");if(x&&!x.classList.contains("ihd")){x.classList.toggle("full");setTimeout(fit,30)}});
 if(qp._fit==="shrink")[].forEach.call(ct.querySelectorAll(".ex:not(.ihd)>.s>.t>.tx,.il"),function(t){var f=19.5;var vis=[];var p=t;while(p&&p!==ct){if(p.style&&p.style.display==="none"){vis.push(p);p.style.display=""}p=p.parentNode}
  while(t.scrollWidth>t.clientWidth+1&&f>15){f-=0.5;t.style.setProperty("font-size",f+"px","important")}vis.forEach(function(v){v.style.display="none"})});
