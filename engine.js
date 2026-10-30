@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="3.0.0";
+var VERSION="3.0.1";
 // v2.0.1: a row or step whose m is empty ("" or []) loses the m in prep, so it draws flat instead of failing the round as "row with an empty dropdown"; a step with no m draws flat (no arrow), like a row.
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
@@ -459,8 +459,10 @@ function detail(c,node){var d=document.createElement("div");d.className="dt";d.a
 function rowCard(x,k){var step=x.classList.contains("td");var c=card(step?"step":"row",k);var s0=x.querySelector(":scope>.s");var hn=step?(s0.querySelector(".hi")||s0):(s0.querySelector(".t")||s0);var label=hn.textContent;head(c,hn);
  var m=x.querySelector(":scope>.w>.m");if(m&&m.firstChild)detail(c,m.firstChild);bar(c,null,label,null)}
 secs.forEach(function(sx,k){var ihd=sx.querySelector(":scope > .ex.ihd"),inner=ihd?ihd.querySelector(".in"):null;
- if(sx.classList.contains("idea")&&ihd){var c=card("tc",k);var em=ihd.querySelector(".hi > .em"),t=ihd.querySelector(".it"),g=ihd.querySelector(".il");var w=document.createElement("div");w.className="tcw";
-  if(em){var n=document.createElement("div");n.className="num";n.textContent=em.textContent;w.appendChild(n)}var tt=document.createElement("div");tt.className="tt";tt.textContent=t?t.textContent:"";w.appendChild(tt);if(g){var gl=document.createElement("div");gl.className="gl";gl.textContent=g.textContent;w.appendChild(gl)}c.appendChild(w);
+ if(sx.classList.contains("idea")&&ihd){var c=card("tc",k);var em=ihd.querySelector(".hi > .em"),t=ihd.querySelector(".it"),g=ihd.querySelector(".il");
+  /* v3.0.1: a title card looks like every other card (Jeff 10/30): the number and the title on the top line, a thin line, then the gray line as its detail */
+  var hw=document.createElement("span");hw.style.cssText="display:flex;gap:8px;align-items:flex-start";if(em){var n=document.createElement("span");n.className="em";n.textContent=em.textContent;hw.appendChild(n)}var tt=document.createElement("span");tt.textContent=t?t.textContent:"";hw.appendChild(tt);head(c,hw);
+  if(g&&g.textContent.trim()){var gp=document.createElement("p");gp.textContent=g.textContent;detail(c,gp)}
   var ino=inner&&inner.querySelector(":scope > .inote");bar(c,ino?ino.querySelector(".qnb textarea"):null,(t?t.textContent:"")+" (title)",ino?ino.querySelector(".qnb .at"):null)}
  var root=inner||sx;[].slice.call(root.children).forEach(function(ch){if(!ch.classList)return;
   if(ch.classList.contains("ak")){var c=card("ask",k);c.appendChild(ch);bar(c,ch.querySelector(".qnb textarea"),"",ch.querySelector(".qnb .at"));return}
