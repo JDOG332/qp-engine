@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="2.0.9";
+var VERSION="2.0.10";
 // v2.0.1: a row or step whose m is empty ("" or []) loses the m in prep, so it draws flat instead of failing the round as "row with an empty dropdown"; a step with no m draws flat (no arrow), like a row.
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
@@ -311,7 +311,7 @@ function mount(R){
  qp.addEventListener("dragleave",function(e){if(!qp.contains(e.relatedTarget))qp.classList.remove("drop")});
  qp.addEventListener("drop",function(e){if(!canShot)return;e.preventDefault();qp.classList.remove("drop");var fs=e.dataTransfer&&e.dataTransfer.files;if(!fs||!fs.length)return;var h=e.target.closest&&e.target.closest(".qh"),id="_page";if(h){var s=h.closest(".sec");(R.screens||[]).forEach(function(q){if(q._sec===s)id=q.id})}addShots(id,fs);var w=h?h.querySelector(".in"):pn.querySelector(".in");if(w&&w._mark)w._mark()});
  [].forEach.call(ct.querySelectorAll(".sec"),function(s,i){var q=(R.screens||[])[i];if(q)q._sec=s});
- if(R.ideas&&R.layout!=="boxes"){qp._NT=NT;qp._fit=R.fit||"";qp._drop=R.drop||"grow";screensMode(qp,ct)}
+ if(R.ideas&&R.layout!=="boxes"){qp._NT=NT;qp._fit=R.fit||"";qp._drop=R.drop||"focus";screensMode(qp,ct)}
 
 
 }
@@ -376,6 +376,14 @@ function openDet(w,title){var cur=S.filter(function(x){return x.style.display!==
   if(k<pages.length-1){var b2=document.createElement("button");b2.type="button";b2.textContent="More";b2.onclick=function(e){e.stopPropagation();page(k+1)};f.appendChild(b2)}else{var sp=document.createElement("div");sp.style.cssText="flex:0 0 24%";f.appendChild(sp)}}
  page(0)}
 function closeDet(){if(!DET)return;var d=DET;DET=null;[].forEach.call(d.P.querySelectorAll(".qdc *"),function(u){if(u.style)u.style.display=""});d.kids.forEach(function(k){d.w.appendChild(k)});d.P.remove();if(d.cur)d.cur.style.display="";nav.style.display="";fit()}
+// v2.0.10 focus: one tap opens a dropdown in place; if the screen would run past the card, the other items on that screen tuck away so the open one has the room; one more tap on it brings them back; the card keeps its height and nothing scrolls inside; only a detail taller than the whole screen still grows the card
+function focusFix(){if(qp._drop!=="focus")return;var cur=S.filter(function(x){return x.style.display!=="none"})[0];if(!cur)return;
+ [].forEach.call(cur.querySelectorAll(".qfh"),function(x){x.classList.remove("qfh")});var oh=cur.querySelector(".qfhint");if(oh)oh.remove();
+ var open=cur.querySelector(".ex.open:not(.ihd),.op.open");var room=parseInt(box.style.minHeight)||0;if(!open||!room||cur.offsetHeight<=room)return;
+ var inn=cur.querySelector(":scope > .ex.ihd .in");var n=open;while(n&&n!==inn&&n.parentNode){var p=n.parentNode;[].forEach.call(p.children,function(c){if(c===n||!c.classList)return;if(c.classList.contains("nbar")||c.classList.contains("qnb")||c.classList.contains("aq")||c.classList.contains("s"))return;c.classList.add("qfh")});n=p}
+ var hint=document.createElement("div");hint.className="qfhint";hint.textContent="Tap it again to see the rest";var bar=inn.querySelector(":scope > .nbar");inn.insertBefore(hint,bar||null)}
+ct.addEventListener("click",function(){setTimeout(function(){focusFix();fit()},0)},true);
+(function(){var st2=document.createElement("style");st2.textContent=".qp .qfh{display:none!important}.qp .qfhint{font-size:15px!important;opacity:.6;text-align:center;padding:2px 0}";document.head.appendChild(st2)})();
 function SPLIT(){var probe=S[0];S.forEach(function(s){s.style.display="none"});probe.style.display="";var b0=box.style.minHeight;box.style.minHeight="0px";var dn=document.createElement("div");dn.style.height="0px";ct.insertBefore(dn,box);nav.style.minHeight="46px";var chrome=qp.offsetHeight-box.offsetHeight;dn.remove();var room=CARD-chrome;probe.style.display="none";
  var out=[];S.forEach(function(s){var parts=[s];var cur=s;cur.style.display="";var guard=0;
   while(cur.offsetHeight>room&&guard++<400){var inn=cur.querySelector(":scope > .ex.ihd .in");var units=[];var SK=function(c){return c.classList.contains("icl")||c.classList.contains("nbar")||c.classList.contains("qnb")||c.classList.contains("qdiag")||c.style.display==="none"};/* v2.0.7: a screen holding one question that is too tall splits that question by its parts too */var solo=[].filter.call(inn.children,function(c){return !SK(c)}).length<2;[].forEach.call(inn.children,function(c){if(SK(c))return;if(!c.className&&c.children.length>1||c.classList.contains("st")||c.classList.contains("ak")&&c.children.length>2&&(solo||c.offsetHeight>room*0.8))[].forEach.call(c.children,function(x){units.push(x)});else units.push(c)});
