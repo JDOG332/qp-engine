@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="2.0.4";
+var VERSION="2.0.5";
 // v2.0.1: a row or step whose m is empty ("" or []) loses the m in prep, so it draws flat instead of failing the round as "row with an empty dropdown"; a step with no m draws flat (no arrow), like a row.
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
@@ -309,7 +309,7 @@ function mount(R){
 
 }
 // v2.0.0: one screen per idea (Jeff, iqp8 to iqp14, 10/29): Back and Next, a faint number bar to jump, one note bar per screen, Submit all answers on the last screen; every card 680 tall on the iPhone and the Mac; a topic too tall moves its last items onto its own next screen (1/2, 2/2). layout:"boxes" in a round keeps the v1.16 boxes.
-function screensMode(qp,ct){var CARD=680;var fit=function(){};
+function screensMode(qp,ct){var CARD=680;/* v2.0.5: never taller than the phone: a smaller phone gets a shorter card (Jeff 10/30) */try{if(matchMedia("(pointer:coarse)").matches&&screen.height>300)CARD=Math.min(680,screen.height-250)}catch(e){}var fit=function(){};
 var S=[].filter.call(ct.children,function(x){return x.querySelector&&x.querySelector(":scope > .ex.ihd")});if(!S.length)return;S.forEach(function(x,k){x._k=k});
 var send=ct.querySelector(".send");if(send)send.style.display="none";qp.classList.add("scr");
 var st=document.createElement("style");st.textContent=
@@ -326,7 +326,7 @@ document.head.appendChild(st);
 var FIT={wrap:".qp .ex:not(.ihd)>.s>.t>.tx,.qp .il{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}",
  clamp2:".qp .ex:not(.ihd)>.s>.t>.tx,.qp .il{white-space:normal!important;overflow:hidden!important;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical}",
  tap:".qp .ex.open>.s>.t>.tx,.qp .ex.full>.s>.t>.tx{white-space:normal!important;overflow:visible!important}.qp .ex.cut>.s>.t>.tx::after{content:''}"};
-if(FIT[qp._fit]){var fs=document.createElement("style");fs.textContent=FIT[qp._fit];document.head.appendChild(fs)}
+/* v2.0.5: two lines, then ... is the default (Jeff picked option C on his iPhone, 10/30) */var FM=qp._fit||"clamp2";if(FIT[FM]){var fs=document.createElement("style");fs.textContent=FIT[FM];document.head.appendChild(fs)}
 if(qp._fit==="tap")ct.addEventListener("click",function(e){var x=e.target.closest&&e.target.closest(".ex.flat");if(x&&!x.classList.contains("ihd")){x.classList.toggle("full");setTimeout(fit,30)}});
 if(qp._fit==="shrink")[].forEach.call(ct.querySelectorAll(".ex:not(.ihd)>.s>.t>.tx,.il"),function(t){var f=19.5;var vis=[];var p=t;while(p&&p!==ct){if(p.style&&p.style.display==="none"){vis.push(p);p.style.display=""}p=p.parentNode}
  while(t.scrollWidth>t.clientWidth+1&&f>15){f-=0.5;t.style.setProperty("font-size",f+"px","important")}vis.forEach(function(v){v.style.display="none"})});
@@ -358,7 +358,7 @@ function SPLIT(){var probe=S[0];S.forEach(function(s){s.style.display="none"});p
 function START(){SPLIT();var dots=document.createElement("div");dots.className="qdots";ct.insertBefore(dots,box);S.forEach(function(s,k){var b=document.createElement("button");b.type="button";b.textContent=String(k+1);b.onclick=function(e){e.stopPropagation();show(k)};dots.appendChild(b)});
 var diagT=null;[].forEach.call(qp.querySelectorAll("textarea.tx"),function(t){if(/fills in by itself/i.test(t.placeholder||"")){var a=t.closest(".ak");if(a)a.classList.add("qdiag");diagT=t}});
 var i=0;function btn(t,c,f){var b=document.createElement("button");b.type="button";b.textContent=t;if(c)b.className=c;b.onclick=function(e){e.stopPropagation();f()};nav.appendChild(b)}
-fit=function(){[].forEach.call(box.querySelectorAll(".nbar"),function(x){x.style.marginTop=""});box.style.minHeight="0px";var chrome=qp.offsetHeight-box.offsetHeight,m=Math.max(0,CARD-chrome);box.style.minHeight=m+"px";/* v2.0.3: the note bar sits at the bottom of every screen, right above Back and Next (Jeff 10/30) */var cs=S[i],cb=cs&&cs.querySelector(".nbar");if(cb){var gp=m-cs.offsetHeight;if(gp>0)cb.style.marginTop=(4+gp)+"px"}var HS=S.map(function(s){var o=s.style.display;s.style.display="";var h=s.offsetHeight;s.style.display=o;return h});if(diagT){diagT.value="scr "+screen.width+"x"+screen.height+" vh"+innerHeight+" card"+qp.offsetHeight+" screens "+HS.join(",")+" room "+box.style.minHeight+" over "+HS.filter(function(h){return h>parseInt(box.style.minHeight)}).length+" ua "+(/iPhone/.test(navigator.userAgent)?"iPhone":/Mac/.test(navigator.userAgent)?"Mac":"other");diagT.dispatchEvent(new Event("input"))}}
+fit=function(){[].forEach.call(box.querySelectorAll(".nbar"),function(x){x.style.marginTop=""});box.style.minHeight="0px";var chrome=qp.offsetHeight-box.offsetHeight,m=Math.max(0,CARD-chrome);box.style.minHeight=m+"px";/* v2.0.5: the screen area never grows past the card; an opened dropdown that runs long scrolls inside its screen as a last resort */box.style.maxHeight=m+"px";box.style.overflowY="auto";/* v2.0.3: the note bar sits at the bottom of every screen, right above Back and Next (Jeff 10/30) */var cs=S[i],cb=cs&&cs.querySelector(".nbar");if(cb){var gp=m-cs.offsetHeight;if(gp>0)cb.style.marginTop=(4+gp)+"px"}var HS=S.map(function(s){var o=s.style.display;s.style.display="";var h=s.offsetHeight;s.style.display=o;return h});if(diagT){diagT.value="scr "+screen.width+"x"+screen.height+" vh"+innerHeight+" card"+qp.offsetHeight+" screens "+HS.join(",")+" room "+box.style.minHeight+" over "+HS.filter(function(h){return h>parseInt(box.style.minHeight)}).length+" ua "+(/iPhone/.test(navigator.userAgent)?"iPhone":/Mac/.test(navigator.userAgent)?"Mac":"other");diagT.dispatchEvent(new Event("input"))}}
 function show(n){i=(n+S.length)%S.length;S.forEach(function(s,k){s.style.display=k===i?"":"none"});[].forEach.call(dots.children,function(b,k){b.classList.toggle("on",k===i)});
 nav.innerHTML="";nav.className="qnav"+(i===S.length-1?" last":"");btn("Back","",function(){show(i-1)});btn("Next","",function(){show(i+1)});if(i===S.length-1)btn("Submit all answers","sub",function(){if(send)send.click()});fit()}
 show(0);setTimeout(fit,300);document.addEventListener("click",function(){setTimeout(fit,250)},true)}
