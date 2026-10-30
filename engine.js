@@ -1,6 +1,7 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="3.1.0";
+var VERSION="3.2.0";
+// v3.2.0 (Jeff 10/30, iqp2): grouping is the default: every ❌ ✅ 🧠 ⚠️ row of an idea sits on one card, fully shown, going on to 2/2, 3/3; only a step for Jeff or a question for Jeff gets a card of its own; "group":false keeps one card per row
 // v3.1.0 (Jeff 10/30, iqp1): round "group":true puts every ❌ ✅ 🧠 ⚠️ row of an idea on one card, each row fully shown (headline, then its detail), going on to 2/2, 3/3 when long; steps and questions keep one card each
 // v2.0.1: a row or step whose m is empty ("" or []) loses the m in prep, so it draws flat instead of failing the round as "row with an empty dropdown"; a step with no m draws flat (no arrow), like a row.
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
@@ -312,7 +313,7 @@ function mount(R){
  qp.addEventListener("dragleave",function(e){if(!qp.contains(e.relatedTarget))qp.classList.remove("drop")});
  qp.addEventListener("drop",function(e){if(!canShot)return;e.preventDefault();qp.classList.remove("drop");var fs=e.dataTransfer&&e.dataTransfer.files;if(!fs||!fs.length)return;var h=e.target.closest&&e.target.closest(".qh"),id="_page";if(h){var s=h.closest(".sec");(R.screens||[]).forEach(function(q){if(q._sec===s)id=q.id})}addShots(id,fs);var w=h?h.querySelector(".in"):pn.querySelector(".in");if(w&&w._mark)w._mark()});
  [].forEach.call(ct.querySelectorAll(".sec"),function(s,i){var q=(R.screens||[])[i];if(q)q._sec=s});
- if(R.ideas&&R.layout!=="boxes"){qp._NT=NT;qp._group=R.group===true||R.group==="rows";qp._fit=R.fit||"";qp._drop=R.drop||"focus";qp._stream=R.stream!==false;if(R.layout==="screens")screensMode(qp,ct);else cardsMode(qp,ct)}
+ if(R.ideas&&R.layout!=="boxes"){qp._NT=NT;qp._group=R.group!==false;qp._fit=R.fit||"";qp._drop=R.drop||"focus";qp._stream=R.stream!==false;if(R.layout==="screens")screensMode(qp,ct);else cardsMode(qp,ct)}
 
 
 }
