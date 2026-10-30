@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="2.0.1";
+var VERSION="2.0.2";
 // v2.0.1: a row or step whose m is empty ("" or []) loses the m in prep, so it draws flat instead of failing the round as "row with an empty dropdown"; a step with no m draws flat (no arrow), like a row.
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
@@ -331,11 +331,18 @@ var box=document.createElement("div");ct.insertBefore(box,S[0]);S.forEach(functi
 [].forEach.call(ct.querySelectorAll(":scope > .sec"),function(x){var last=S[S.length-1].querySelector(":scope > .ex.ihd .in");if(last)last.insertBefore(x,last.querySelector(":scope > .nbar"))});
 var nav=document.createElement("div");nav.className="qnav";ct.insertBefore(nav,send||null);
 // auto split: a screen taller than the room moves its last items onto a new screen right after it, titled 1/2, 2/2
+// v2.0.2: every screen gets a note bar, split screens included (Jeff 10/30: "a note option on every single page"); each part's note is joined into the idea's one note, tagged (1/2), (2/2)
+function mkBar(s){var b0=s.querySelector(":scope > .ex.ihd .in > .nbar");if(!b0)return null;var ta0=b0.querySelector("textarea.nt"),c0=b0.querySelector(".clip");
+ if(!s._px){s._px=[];if(ta0){var p1=proxy(s,ta0);p1.value=ta0.value;ta0.style.display="none";b0.insertBefore(p1,ta0)}}
+ var bar=document.createElement("div");bar.className="nbar";if(ta0)bar.appendChild(proxy(s,ta0));var c=document.createElement("button");c.type="button";c.className="clip";c.textContent="📎";c.setAttribute("aria-label","Add a screenshot");
+ c.onclick=function(e){e.stopPropagation();if(/iPhone|iPad/.test(navigator.userAgent)){var h=bar.parentNode;if(h&&!h.querySelector(".cliptip")){var tip=document.createElement("div");tip.className="cliptip";tip.style.cssText="font-size:16px;opacity:.75";tip.textContent="On the iPhone, paste screenshots into the chat box after Submit.";h.appendChild(tip);setTimeout(fit,50)}return}if(c0)c0.click()};bar.appendChild(c);return bar}
+function proxy(s,ta0){var t=document.createElement("textarea");t.className="nt";t.rows=1;t.placeholder="Add a note";s._px.push(t);
+ t.addEventListener("input",function(){t.style.height="46px";t.style.height=Math.min(150,Math.max(46,t.scrollHeight))+"px";t.style.overflowY=t.scrollHeight>150?"auto":"hidden";var n=s._px.length;ta0.value=s._px.map(function(x,k){var v=x.value.trim();return v?(n>1?"("+(k+1)+"/"+n+") ":"")+v:""}).filter(Boolean).join("\n");ta0.dispatchEvent(new Event("input"));setTimeout(fit,20)});return t}
 function SPLIT(){var probe=S[0];S.forEach(function(s){s.style.display="none"});probe.style.display="";var b0=box.style.minHeight;box.style.minHeight="0px";var dn=document.createElement("div");dn.style.height="20px";ct.insertBefore(dn,box);nav.style.minHeight="46px";var chrome=qp.offsetHeight-box.offsetHeight;dn.remove();var room=CARD-chrome;probe.style.display="none";
  var out=[];S.forEach(function(s){var parts=[s];var cur=s;cur.style.display="";var guard=0;
   while(cur.offsetHeight>room&&guard++<40){var inn=cur.querySelector(":scope > .ex.ihd .in");var units=[];[].forEach.call(inn.children,function(c){if(c.classList.contains("icl")||c.classList.contains("nbar")||c.classList.contains("qnb")||c.classList.contains("qdiag")||c.style.display==="none")return;if(!c.className&&c.children.length>1||c.classList.contains("st"))[].forEach.call(c.children,function(x){units.push(x)});else units.push(c)});
    if(units.length<2)break;var nx=cur._next||null;
-   if(!nx){nx=cur.cloneNode(true);var ni=nx.querySelector(":scope > .ex.ihd .in");while(ni.firstChild)ni.removeChild(ni.firstChild);cur._next=nx;nx._orig=s;parts.push(nx);cur.parentNode.insertBefore(nx,cur.nextSibling);nx.style.display="none"}
+   if(!nx){nx=cur.cloneNode(true);var ni=nx.querySelector(":scope > .ex.ihd .in");while(ni.firstChild)ni.removeChild(ni.firstChild);var xb=mkBar(s);if(xb)ni.appendChild(xb);cur._next=nx;nx._orig=s;parts.push(nx);cur.parentNode.insertBefore(nx,cur.nextSibling);nx.style.display="none"}
    var u=units[units.length-1],grp=u.parentNode===inn?null:u.parentNode,ni2=nx.querySelector(":scope > .ex.ihd .in");
    if(grp){var g2=ni2.firstChild&&ni2.firstChild._src===grp?ni2.firstChild:null;if(!g2){g2=grp.cloneNode(false);g2._src=grp;ni2.insertBefore(g2,ni2.firstChild)}g2.insertBefore(u,g2.firstChild)}else ni2.insertBefore(u,ni2.firstChild);
    if(cur.offsetHeight<=room){cur.style.display="none";cur=nx;cur.style.display=""}}
