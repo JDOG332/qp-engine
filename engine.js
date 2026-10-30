@@ -1,6 +1,7 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="3.0.5";
+var VERSION="3.1.0";
+// v3.1.0 (Jeff 10/30, iqp1): round "group":true puts every ❌ ✅ 🧠 ⚠️ row of an idea on one card, each row fully shown (headline, then its detail), going on to 2/2, 3/3 when long; steps and questions keep one card each
 // v2.0.1: a row or step whose m is empty ("" or []) loses the m in prep, so it draws flat instead of failing the round as "row with an empty dropdown"; a step with no m draws flat (no arrow), like a row.
 // v1.9.2: report rows never fold: several ✅ or 🧠 rows show one per line instead of behind a "N done" or "N memory writes" row (Jeff, 10/27)
 // v1.9.1: the engine injects the Source Sans font tag and the hidden screenshot form itself (unless R.shots===false or a form.elicit is already in the card), so a card is a 200-character wrapper plus the round
@@ -311,7 +312,7 @@ function mount(R){
  qp.addEventListener("dragleave",function(e){if(!qp.contains(e.relatedTarget))qp.classList.remove("drop")});
  qp.addEventListener("drop",function(e){if(!canShot)return;e.preventDefault();qp.classList.remove("drop");var fs=e.dataTransfer&&e.dataTransfer.files;if(!fs||!fs.length)return;var h=e.target.closest&&e.target.closest(".qh"),id="_page";if(h){var s=h.closest(".sec");(R.screens||[]).forEach(function(q){if(q._sec===s)id=q.id})}addShots(id,fs);var w=h?h.querySelector(".in"):pn.querySelector(".in");if(w&&w._mark)w._mark()});
  [].forEach.call(ct.querySelectorAll(".sec"),function(s,i){var q=(R.screens||[])[i];if(q)q._sec=s});
- if(R.ideas&&R.layout!=="boxes"){qp._NT=NT;qp._fit=R.fit||"";qp._drop=R.drop||"focus";qp._stream=R.stream!==false;if(R.layout==="screens")screensMode(qp,ct);else cardsMode(qp,ct)}
+ if(R.ideas&&R.layout!=="boxes"){qp._NT=NT;qp._group=R.group===true||R.group==="rows";qp._fit=R.fit||"";qp._drop=R.drop||"focus";qp._stream=R.stream!==false;if(R.layout==="screens")screensMode(qp,ct);else cardsMode(qp,ct)}
 
 
 }
@@ -446,6 +447,7 @@ var st=document.createElement("style");st.textContent=
 ".qp .card .ak{gap:8px!important;border-top:0!important;padding-top:0!important;margin-top:0!important}.qp .card .ak>.aq{font-size:22px;font-weight:700;line-height:1.3}.qp .card .ak .qn,.qp .card .ak .qnb{display:none!important}"+
 ".qp .card .cbar{margin-top:auto;display:flex;gap:8px;align-items:flex-end}.qp .card .cbar textarea{flex:1;min-width:0;min-height:46px;height:46px;max-height:110px;resize:none;overflow:hidden;box-sizing:border-box;padding:10px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-size:17px;line-height:1.3}"+
 ".qp .card .cbar .clip{flex:none;width:56px;height:46px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;cursor:pointer}"+
+".qp .card.grp>.dt{flex:none}.qp .card .rr{display:flex;flex-direction:column;gap:4px}.qp .card .rr+.rr{border-top:1px solid var(--line);padding-top:10px}.qp .card .rr .rh{font-size:19.5px;font-weight:700;color:var(--ink);line-height:1.3}.qp .card .rr .rh .t{display:flex;gap:8px;align-items:flex-start}.qp .card .rr .rd .in{padding:0!important}"+
 ".qp .cnav{display:flex;gap:8px}.qp .cnav button{flex:1 1 0;min-height:52px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;cursor:pointer}.qp .cnav button.sub{font-weight:700;background:var(--ink);border-color:var(--ink);color:var(--bg)}.qp .cnav .hid{visibility:hidden}"+".qp .cdots{display:flex;justify-content:center;align-items:center;gap:0;height:24px;overflow:hidden}.qp .cdots i{position:relative;flex:0 1 16px;min-width:3px;height:24px;cursor:pointer;-webkit-tap-highlight-color:transparent}.qp .cdots i::after{content:\"\";position:absolute;left:50%;top:50%;width:7px;max-width:calc(100% - 1px);height:7px;transform:translate(-50%,-50%);border-radius:4px;background:var(--line)}.qp .cdots i.cur::after{background:#fff;box-shadow:0 0 0 1px var(--ink)}"+".qp .done .box,.qp .box.ck{background:var(--accent);color:#fff!important;font-weight:800;font-size:20px}@media (prefers-color-scheme:dark){.qp .done .box,.qp .box.ck{background:transparent;border-color:#fff}}";
 document.head.appendChild(st);
 var box=document.createElement("div");box.className="cbox";var nav=document.createElement("div");nav.className="cnav";ct.insertBefore(box,secs[0]);ct.insertBefore(nav,send||null);/* v3.0.3: one dot per card under Back and Next, the current one bright white; v3.0.4: each dot is a tall tap target that jumps to its card (Jeff 10/30) */var dots=document.createElement("div");dots.className="cdots";ct.insertBefore(dots,send||null);
@@ -456,7 +458,10 @@ function bar(c,ta,label,at){var b=document.createElement("div");b.className="cba
  if(at){var cl=document.createElement("button");cl.type="button";cl.className="clip";cl.textContent="📎";cl.setAttribute("aria-label","Add a screenshot");cl.onclick=function(e){e.stopPropagation();at.click()};b.appendChild(cl)}c.appendChild(b);return b}
 function head(c,node){var h=document.createElement("div");h.className="hl";h.appendChild(node);c.appendChild(h);return h}
 function detail(c,node){var d=document.createElement("div");d.className="dt";d.appendChild(node);c.appendChild(d);return d}
-function rowCard(x,k){var step=x.classList.contains("td");var c=card(step?"step":"row",k);var s0=x.querySelector(":scope>.s");var hn=step?(s0.querySelector(".hi")||s0):(s0.querySelector(".t")||s0);var label=hn.textContent;head(c,hn);
+var RC={};
+function groupRow(x,k){var c=RC[k];if(!c){c=RC[k]=card("row grp",k);var h=document.createElement("span");h.textContent="Claude\u2019s rows";head(c,h);var d=document.createElement("div");d.className="in";detail(c,d);c._in=d;bar(c,null,"Claude\u2019s rows",null)}
+ var s0=x.querySelector(":scope>.s"),hn=s0.querySelector(".t")||s0,r=document.createElement("div");r.className="rr";var rh=document.createElement("div");rh.className="rh";rh.appendChild(hn);r.appendChild(rh);var m=x.querySelector(":scope>.w>.m");if(m&&m.firstChild){var rd=document.createElement("div");rd.className="rd";rd.appendChild(m.firstChild);r.appendChild(rd)}c._in.appendChild(r)}
+function rowCard(x,k){var step=x.classList.contains("td");if(!step&&qp._group){groupRow(x,k);return}var c=card(step?"step":"row",k);var s0=x.querySelector(":scope>.s");var hn=step?(s0.querySelector(".hi")||s0):(s0.querySelector(".t")||s0);var label=hn.textContent;head(c,hn);
  var m=x.querySelector(":scope>.w>.m");if(m&&m.firstChild)detail(c,m.firstChild);bar(c,null,label,null)}
 secs.forEach(function(sx,k){var ihd=sx.querySelector(":scope > .ex.ihd"),inner=ihd?ihd.querySelector(".in"):null;
  if(sx.classList.contains("idea")&&ihd){var c=card("tc",k);var em=ihd.querySelector(".hi > .em"),t=ihd.querySelector(".it"),g=ihd.querySelector(".il");
