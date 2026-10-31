@@ -3,7 +3,7 @@
 Usage: check.py round.json   (exit 1 on any problem)"""
 import json, re, sys
 
-KINDS = {"report", "todo", "decide", "do", "pair", "rank", "drag", "scale", "date", "number", "text"}
+KINDS = {"report", "todo", "decide", "do", "pair", "rank", "drag", "scale", "date", "number", "text", "check"}
 QKINDS = KINDS - {"report", "todo"}
 # number keycap built with chr() on purpose: saving a skill strips the hidden character and turns escape codes back into it
 KEYCAP = "[1-9]" + chr(0xFE0F) + "?" + chr(0x20E3)
@@ -105,6 +105,15 @@ def check(r):
             qk = q.get("quick")
             if qk is not None and (not isinstance(qk, list) or len(qk) > 6 or any(not isinstance(v, (int, float)) for v in qk)):
                 bad(w, "quick must be up to 6 numbers")
+        if k == "check":
+            ci = q.get("items") or []
+            if not 2 <= len(ci) <= 8:
+                bad(w, "check needs 2 to 8 items")
+            if any(not isinstance(x, str) or not x.strip() for x in ci):
+                bad(w, "check items are short text")
+            pk = q.get("pick")
+            if pk is not None and (not isinstance(pk, list) or any(x not in ci for x in pk)):
+                bad(w, "check pick must list items it has")
         if k == "text" and q.get("ph") is not None and not isinstance(q["ph"], str):
             bad(w, "ph must be text")
     return errs

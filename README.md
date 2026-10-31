@@ -8,6 +8,10 @@ Rounds load a fixed version through jsDelivr, for example:
 
 https://cdn.jsdelivr.net/gh/JDOG332/qp-engine@<full commit sha>/engine.js (pinned by commit; tags are not used)
 
+## v4.0.0
+
+One long scroll. No cards, no paging, no Back, Next or dots: ideas flow down the page under a small gray label with a thin line and about 50 px of space above it. Every title (row, step, question) is one size, 22 px, colored by its emoji (✅ green, ⚠️ amber, ❓ blue, 🧠 purple, ❌ red); details are always shown, never in a dropdown (15.5 px, gray); answers are 17.5 px, in 2 columns when every label is short and has no note. New answer type `check` (`items`, optional `pick` list) for keep-or-change lists. One note line at the end of every idea (📎 on the Mac when screenshots are on), Submit all at the bottom. The chat's own font throughout. The Send format is unchanged; a `check` answer reads "checked: a, b" or "none checked". Rounds written for v3 still draw, in the new layout.
+
 ## v2.0.0
 
 One screen per idea is the default layout for grouped rounds: each idea is its own screen, already open, with Back and Next at the bottom and a small faint number bar at the top to jump to any screen. The last screen adds Submit all answers (bold, filled) and Next wraps to screen 1. Every card is 680 tall on the iPhone and the Mac; a topic too tall moves its last items onto its own next screen, titled 1/2, 2/2. One note bar per screen sits at the bottom: tap once and type, with a 📎 beside it. Answers and dates are straight full-width lines; every row is one line, with its detail in the dropdown. The Close this box button is gone. A round with `"layout":"boxes"` still draws the v1.16 boxes.
