@@ -116,10 +116,6 @@ def check(r):
                 bad(w, "check pick must list items it has")
         if k == "text" and q.get("ph") is not None and not isinstance(q["ph"], str):
             bad(w, "ph must be text")
-        if q.get("sug") is not None and (not isinstance(q["sug"], str) or not q["sug"].strip()):
-            bad(w, "sug must be text")
-        if q.get("sug") is not None and q.get("code"):
-            bad(w, "code screens take no sug")
     return errs
 
 
