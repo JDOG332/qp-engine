@@ -1,6 +1,6 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="4.1.1";
+var VERSION="4.1.2";
 // v3.3.0 (Jeff 10/30): a round with a finish verdict ends on the verdict card itself (🗑️ or 💾, the three checks, the pickup point), with no Submit all and no note bars, so the page plainly needs no answer; anything Jeff wants to say goes in the chat box
 // v3.2.1 (Jeff 10/30, iqp3 cut off): a grouped row too tall for one card goes on to the next card part by part (headline repeated), a long paragraph inside it splits by sentence, and a copy box over 280 characters shows its first lines with "Full text in Copy" (Copy still copies all of it), so nothing is ever cut off; a card still cut off shows in the Send header as "cut: N"
 // v3.2.0 (Jeff 10/30, iqp2): grouping is the default: every ❌ ✅ 🧠 ⚠️ row of an idea sits on one card, fully shown, going on to 2/2, 3/3; only a step for Jeff or a question for Jeff gets a card of its own; "group":false keeps one card per row
@@ -162,6 +162,7 @@ function showErrors(host,errs){var b=document.createElement("div");b.style.cssTe
  var h=document.createElement("b");h.textContent="This page was not drawn: the round failed its check. Claude fixes it and draws it again.";b.appendChild(h);
  var ul=document.createElement("ul");ul.style.margin="8px 0 0";errs.forEach(function(e){var li=document.createElement("li");li.textContent=e;ul.appendChild(li)});b.appendChild(ul);host.appendChild(b)}
 function txt4(m){if(m==null)return"";if(Array.isArray(m))return m.map(function(x){return typeof x==="string"?x:(x&&(x.p||x.c||x.s))||""}).filter(Boolean).join(" ");return String(m)}
+// v4.1.2 (Jeff 11/2): mount clears the card's own fallback text first, so the card can hold "The page engine did not load" in qp-root itself and no if/else line is needed
 // v4.1.1 (Jeff 11/2): the 🗑️ and 💾 verdict box lists all seven checks
 // v4.1.0 (Jeff 11/1, mocks 20 to 36): the calm look. Navy page; what Claude did sits in a mint-outlined top part (each line folds open with its arrow, a tap on a line hides it, one Close folds the whole part and turns into Open in the same spot); Jeff's part sits on a lighter band: every question and step in its own soft blue outline, the first one glowing, two at a time, the next sliding in as one is answered; answers are colored chips drawn as tap areas with inline colors (claude.ai's own button style strips color from real buttons), Claude's pick in a white dotted outline; a code ask has Not yet plus a gold Approve and never a pick; the dots ride in Send, which reads Send Claude's picks until Jeff changes an answer; all answered shows All set and a green Send; after Send, Jeff's part folds into one Sent line that opens again to edit; notes are soft bands (type or talk)
 var C5={navy:"#1e2533",ink:"#f2f4f8",sub:"#9aa3b5",dim:"#6f7a8f",yel:"#F5C518",red:"#F04A3E",pink:"#F6A5B8",mint:"#A8E6B0",gold:"#F5C518",blue:"#8EC5FF",ac:["#8EC5FF","#F2B880","#A8E6B0","#C9B8FF"]};
@@ -204,7 +205,7 @@ function mount(R0){
  if(R.ideas==null){var rows=[],steps=[],asks=[];(R.screens||[]).forEach(function(q){if(q.kind==="report"){(q.rows||[]).forEach(function(x){var e=first(x.s||"");if(FIN&&(e.indexOf("🗑")===0||e.indexOf("💾")===0))return;rows.push(x)})}else if(q.kind==="todo"){(q.rows||[]).forEach(function(x,j){steps.push({id:x.id||q.id+"_"+j,s:String(x.s||"").replace(/^\S+\s+/,""),m:x.m})})}else asks.push(q)});
   R.ideas=[{t:R0.title||"This round",rows:rows,steps:steps,asks:asks}].filter(function(I){return I.rows.length||I.steps.length||I.asks.length})}
  R.screens=[];var CE=check(R);if(CE.length){showErrors(host,CE);return}
- var qp=el("div","q5");host.appendChild(qp);
+ if(host&&!host.querySelector(".q5"))host.textContent="";var qp=el("div","q5");host.appendChild(qp);
  var S={tuck:{},open:{},closed:false,sent:false,changed:false,auto:[]},A={},HID={},NT={},SH={},shotTarget=null,canShot=!!document.querySelector("form.elicit"),touch=false;try{touch=matchMedia("(pointer:coarse)").matches}catch(e){}
  var pick=el("input");pick.type="file";pick.multiple=true;pick.accept="image/*";
  // items: every step and question, in idea order, each with its idea index
