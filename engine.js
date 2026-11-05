@@ -1,6 +1,7 @@
 /* Jeff's inline question page engine. Layout and behavior only: no round content, no answers. */
 (function(){
-var VERSION="4.4.0";
+var VERSION="4.5.0";
+// v4.5.0 (Jeff 11/5, voice talk): Send sends only what Jeff tapped; an untapped question goes as (skipped), never as Claude's pick, since only two questions show at a time and picks went out by accident; the button always reads Send; the dotted outline on Claude's pick stays as a hint; a drafted note still rides along when Jeff taps Claude's pick himself.
 // v4.4.0 (Jeff 11/4, round iqp1): the gray "N more after these" line is a tap target (44 px tall, with a › mark); a tap moves the two questions or steps on screen to the back of the queue, unanswered, so the next ones slide in; the order is kept per round with the answers; an unanswered question still sends as skipped.
 // v4.3.0 (Jeff 11/2, test rounds iqp2 to iqp5): a question's sug is Claude's drafted note, drawn inside its note box as gray italic text with a Use pill: a tap on it makes it the note; a tap anywhere else in the box hides it so Jeff types his own, and it comes back if the box is left empty; on Send an untouched draft rides along only when Jeff's answer is Claude's pick, never on a skipped or changed answer; the Send marks it (Claude's draft, tapped) or (Claude's draft, untouched); never on a code ask or a text ask
 // v3.3.0 (Jeff 10/30): a round with a finish verdict ends on the verdict card itself (🗑️ or 💾, the three checks, the pickup point), with no Submit all and no note bars, so the page plainly needs no answer; anything Jeff wants to say goes in the chat box
@@ -275,7 +276,7 @@ function mount(R0){
   var vis=ITEMS.filter(function(it){return !hidden(it)}),nh=ITEMS.length-vis.length,done=allDone(),body="";
   if(ITEMS.length&&done&&!vis.length)body='<div style="font-size:17px;color:'+C5.mint+';padding:12px 0 2px">All set ✓</div>';
   else{if(!S.review){var lt=S.later;vis=vis.filter(function(it){return lt.indexOf(it.id)<0}).concat(lt.map(byId).filter(function(it){return it&&vis.indexOf(it)>=0}))}var shown=S.review?vis:vis.slice(0,2),g=-1;shown.forEach(function(it,j){if(g<0&&!isAns(it))g=j});body=shown.map(function(it,j){return itemH(it,j===g)}).join("");if(!S.review&&vis.length>2)body+=tb('data-skipq="'+shown.map(function(it){return it.id}).join(" ")+'" class="more"',TB5+"font-size:15px;color:"+C5.dim+";min-height:44px;padding:0;display:flex;align-items:center",(vis.length-2)+' more after these ›')}
-  var lbl=(!ITEMS.length||S.changed||!hasPicks())?"Send":"Send Claude's picks";
+  var lbl="Send";
   return '<div class="bd">'+body+band("_jeff","+ a note","rgba(0,0,0,.18)")+'<div class="sr">'+((nh||S.review)?tb('data-showq="1"',TB5+"font-size:15px;color:"+C5.dim+";padding:8px 0",S.review?"Hide answered":"Review "+nh):(canShot&&!touch?tb('data-clip="_jeff"',TB5+"font-size:18px;padding:6px 8px;color:"+C5.dim,"📎"):"<span></span>"))+pill('data-send="1"',(ITEMS.length?'<span style="display:inline-flex;flex-wrap:wrap;max-width:120px;row-gap:3px">'+dots()+'</span>':'')+lbl+" ↗",done&&ITEMS.length?C5.mint:null)+'</div></div><div style="height:14px"></div>'}
  function hasPicks(){return ITEMS.some(function(it){if(isAns(it)||it.t!=="q")return false;var q=it.q;if(q.code)return false;if(q.kind==="decide")return q.options.some(function(o){return o.pick});if(q.kind==="pair")return true;if(q.kind==="text")return sugOn("t:"+it.id);return q.pick!=null})}
  function grow(t){t.style.height="auto";t.style.height=t.scrollHeight+2+"px"}
@@ -320,7 +321,7 @@ function mount(R0){
  function txt5(m){return txt4(m)}
  function fmt5(v){return String(Math.round(v*1e6)/1e6)}
  function pickAns(it){var q=it.q,a=A[it.id],k=q.kind;if(S.auto.indexOf(it.id)>=0)return true;if(k==="decide"||k==="do"){var ps=(q.options||[]).filter(function(o){return o.pick}).map(function(o){return o.label});if(!ps.length)return false;return q.multi?a===ps.join("; "):a===ps[0]}if(k==="pair")return !!a&&q.items.every(function(x){return a[x.id]===x.pick});if(k==="number")return q.pick!=null&&a===fmt5(q.pick)+(q.unit?" "+q.unit:"");if(k==="scale")return q.pick!=null&&a===q.pick+" of 5";if(k==="check")return q.pick!=null&&JSON.stringify(a||q.pick)===JSON.stringify(q.pick);return false}
- function fillPicks(){S.auto=[];AUTON={};ITEMS.forEach(function(it){if(it.t!=="q"||isAns(it))return;var q=it.q,v=null;if(q.code)return;
+ function fillPicks(){S.auto=[];AUTON={};if(false)ITEMS.forEach(function(it){if(it.t!=="q"||isAns(it))return;var q=it.q,v=null;if(q.code)return;
    if(q.kind==="decide"){var ps=q.options.filter(function(o){return o.pick}).map(function(o){return o.label});if(!ps.length)return;v=q.multi?ps.join("; "):ps[0];if(q.multi)HID[it.id]=true}
    else if(q.kind==="pair"){v={};q.items.forEach(function(x){v[x.id]=(A[it.id]&&A[it.id][x.id])||x.pick})}
    else if(q.kind==="scale"&&q.pick!=null)v=q.pick+" of 5";else if(q.kind==="number"&&q.pick!=null){v=fmt5(q.pick)+(q.unit?" "+q.unit:"");HID[it.id]=true}
