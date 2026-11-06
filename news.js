@@ -1,10 +1,10 @@
 /* qp-engine news.js: the news brief deck. Separate from engine.js; only news rounds load it.
    ND.mount({round, stories:[{t:topic, h:headline, g:gist, f:[facts], o:outlet, u:url}]})
-   Facts and gist take **bold**; text is escaped. Rating 1 to 3 plus a separate More info toggle (v1.1). Send goes to the chat via sendPrompt. */
+   Facts and gist take **bold**; text is escaped. Rating 1 to 3 plus a More info toggle in the same row (v1.1). Send goes to the chat via sendPrompt. */
 (function () {
-  var V = "1.1.0";
+  var V = "1.1.1";
   var C = ["#f2b8b5", "#cfd6e2", "#9fdcae"];
-  var L = ["Don't want these", "Keep similar coming", "More often"];
+  var L = ["Don't want these", "Keep similar coming", "More often", "More info now"];
   var MI = "#c9b8f2";
   var CSS =
     "#nd{--bg:#1e2533;--card:#262f40;--mint:#A8E6B0;--ink:#eef1f6;--dim:#9aa4b5;font-family:ui-rounded,var(--font-sans),system-ui,sans-serif;background:var(--bg);color:var(--ink);border-radius:20px;padding:8px;box-sizing:border-box}" +
@@ -24,10 +24,9 @@
     "#nd textarea{width:100%;background:#2c3548;color:#fff;border:0;border-radius:13px;padding:11px;font:inherit;font-size:15px;min-height:46px;margin-bottom:11px;resize:none;display:block}" +
     "#nd textarea::placeholder{color:var(--dim)}" +
     "#nd .rate{display:flex;gap:6px}" +
-    "#nd .rate [data-r]{flex:1;min-height:48px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:19px;cursor:pointer;font-weight:700;user-select:none;-webkit-user-select:none}" +
+    "#nd .rate [data-r],#nd .rate #nd-mi{flex:1;min-height:48px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:19px;cursor:pointer;font-weight:700;user-select:none;-webkit-user-select:none}" +
     "#nd .ends{display:flex;justify-content:space-between;gap:6px;font-size:12px;color:var(--dim);margin-top:6px}" +
     "#nd .ends span{flex:1;text-align:center}" +
-    "#nd .mi{margin-top:12px;min-height:46px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;cursor:pointer;user-select:none;-webkit-user-select:none}" +
     "#nd .back{color:var(--dim);font-size:13px;cursor:pointer;padding:12px 4px 4px;display:inline-block;min-height:44px}" +
     "#nd .sum{font-size:15px;line-height:1.5;flex:1;margin:6px 0 12px}" +
     "#nd .sum div{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid #2c3548;cursor:pointer}" +
@@ -86,8 +85,8 @@
           '<div class="rate">' + C.map(function (c, k) {
             var on = String(R[i]) === String(k + 1);
             return '<div data-r="' + (k + 1) + '" role="button" style="background:' + (on ? c : c + "22") + ";color:" + (on ? "#1e2533" : c) + ";border:2px solid " + c + '66">' + (k + 1) + "</div>";
-          }).join("") + '</div><div class="ends">' + L.map(function (t) { return "<span>" + t + "</span>"; }).join("") + '</div>' +
-          '<div class="mi" id="nd-mi" role="button" style="background:' + (M[i] ? MI : MI + "22") + ";color:" + (M[i] ? "#1e2533" : MI) + ";border:2px solid " + MI + '66">' + (M[i] ? "\u2713 More info on this, now" : "More info on this, now") + "</div></div>" +
+          }).join("") + '<div id="nd-mi" role="button" style="background:' + (M[i] ? MI : MI + "22") + ";color:" + (M[i] ? "#1e2533" : MI) + ";border:2px solid " + MI + '66">' + (M[i] ? "\u2713 Info" : "Info") + "</div>" +
+          '</div><div class="ends">' + L.map(function (t) { return "<span>" + t + "</span>"; }).join("") + '</div></div>' +
           (i > 0 ? '<span class="back" id="nd-bk">\u21ba Back a story</span>' : "");
       }
       el.innerHTML = h;
